@@ -1,0 +1,2079 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Piecewise</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#1c140d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Piecewise">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,500;1,600&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          bg: '#1c140d',
+          surface: '#2c2116',
+          surface2: '#372a1c',
+          line: 'rgba(255,255,255,0.12)',
+          linesoft: 'rgba(255,255,255,0.07)',
+          ink: '#f7f2e9',
+          ink2: '#b6a995',
+          ink3: '#8c7e6a',
+          accent: { 50:'#f8f1e3', 100:'#eeddbd', 400:'#ddc496', 500:'#cdb183', 600:'#a98a5c', 700:'#876d49' },
+          good: '#8aa473',
+          bad: '#aa5d4c',
+        },
+        fontFamily: {
+          display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          serifitalic: ['"Playfair Display"', 'Georgia', 'serif'],
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root { color-scheme: dark; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: #120d08;
+    color: #f7f2e9;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.006em;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .stage {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(120% 90% at 50% -10%, #241a0f 0%, #120d08 60%);
+    padding: 0;
+  }
+  .app-viewport {
+    width: 100%;
+    max-width: 448px;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0;
+    isolation: isolate;
+    background:
+      radial-gradient(65% 42% at 12% 0%, rgba(221,196,150,0.28), transparent 60%),
+      radial-gradient(75% 55% at 105% 105%, rgba(160,118,64,0.26), transparent 60%),
+      linear-gradient(165deg, #4a3620 0%, #241a10 45%, #160f09 100%);
+  }
+  .app-viewport::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 1;
+  }
+  @media (min-width: 640px) {
+    .stage { padding: 24px; }
+    .app-viewport {
+      height: min(94dvh, 900px);
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 0 0 1px rgba(205,177,131,.12) inset, 0 32px 64px -28px rgba(0,0,0,0.85);
+    }
+  }
+
+  /* Soften the whole shape language app-wide to match a generous, glassy radius
+     scale, without having to touch every element's utility classes individually. */
+  .app-viewport [class*="rounded-2xl"]:not([class*="grad-btn"]) { border-radius: 22px !important; }
+  .app-viewport [class*="rounded-xl"]:not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 18px !important; }
+  .app-viewport [class*="rounded-lg"]:not([class*="rounded-xl"]):not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 13px !important; }
+  .app-viewport [class*="rounded-md"]:not([class*="grad-btn"]) { border-radius: 10px !important; }
+
+  /* Frosted-glass material for every surface/surface2 card app-wide. */
+  .app-viewport [class*="bg-surface2"] {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02)),
+      rgba(58,42,24,0.55) !important;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .app-viewport [class*="bg-surface"]:not([class*="bg-surface2"]) {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.012)),
+      rgba(48,36,21,0.48) !important;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 10px 28px -14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+
+  header.app-header { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
+  nav.app-nav { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+  .math { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style: italic; letter-spacing: 0.01em; }
+  .math sup, .math sub { font-style: italic; }
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 2px; font-size: 0.82em; line-height: 1; }
+  .frac .num { padding: 0 2px 2px; border-bottom: 1.3px solid currentColor; }
+  .frac .den { padding: 2px 2px 0; }
+
+  .app-viewport [class*="grad-btn"] { border-radius: 999px !important; }
+  .grad-btn {
+    background: linear-gradient(135deg, #f1e7d4, #cfae7d); color: #241a0f; border-color: transparent !important;
+    font-weight: 600 !important; letter-spacing: -0.006em;
+    box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 6px 16px -6px rgba(0,0,0,.5);
+    transition: transform .1s cubic-bezier(.2,.8,.2,1), filter .15s ease, box-shadow .15s ease;
+  }
+  .grad-btn:hover { filter: brightness(1.06); }
+  .grad-btn:active { transform: scale(.97); filter: brightness(.94); box-shadow: 0 1px 2px rgba(0,0,0,.25) inset; }
+  .grad-text { color: #f7f2e9; }
+  .grad-ring { background: #cdb183; }
+
+  .option-btn { transition: border-color .15s ease, background .15s ease, transform .1s ease; }
+  .option-btn:hover { border-color: rgba(255,255,255,0.22); }
+  .option-btn:active { transform: scale(.99); }
+  .option-btn.selected { background: rgba(205,177,131,0.14) !important; border-color: #cdb183 !important; }
+  .option-btn.selected .bubble { background:#cdb183 !important; color:#241a0f !important; border-color:#cdb183 !important; }
+  .option-btn.correct { background: rgba(138,164,115,0.16) !important; border-color: #8aa473 !important; }
+  .option-btn.correct .bubble { background:#8aa473 !important; color:#10190b !important; border-color:#8aa473 !important; }
+  .option-btn.wrong { background: rgba(170,93,76,0.16) !important; border-color: #aa5d4c !important; animation: shake .32s; }
+  .option-btn.wrong .bubble { background:#aa5d4c !important; color:#1f0a07 !important; border-color:#aa5d4c !important; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+  @keyframes fadeUp { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: translateY(0); } }
+  .enter { animation: fadeUp .18s ease-out; }
+  @keyframes popIn { from { opacity:0; transform: scale(.98); } to { opacity:1; transform: scale(1); } }
+  .pop { animation: popIn .2s cubic-bezier(.16,1,.3,1); }
+
+  .ring-chart { transform: rotate(-90deg); }
+  .ring-chart circle { transition: stroke-dashoffset .5s ease; }
+
+  progress-track { display:block; }
+
+  .nav-btn { position: relative; transition: color .15s ease; }
+  .nav-btn::after {
+    content: ''; position: absolute; top: -2px; left: 50%; width: 3px; height: 3px;
+    background: #cdb183; opacity: 0; transform: translate(-50%, 2px) scale(.5);
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .nav-btn.text-ink::after { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+  /* Small flourish rule under section headings */
+  .section-rule { display: flex; align-items: center; gap: 8px; }
+  .section-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, rgba(255,255,255,0.14), transparent); }
+  .section-rule .diamond { width: 4px; height: 4px; background: #cdb183; transform: rotate(45deg); flex-shrink: 0; opacity: .9; }
+
+  /* Fine corner brackets for the hero/ornate cards */
+  .ornate-card { position: relative; }
+  .ornate-card::before, .ornate-card::after,
+  .ornate-card .bracket-br, .ornate-card .bracket-bl { content: ''; position: absolute; width: 9px; height: 9px; border-color: rgba(255,255,255,0.35); opacity: .7; pointer-events: none; }
+  .ornate-card::before { top: 5px; left: 5px; border-top: 1.5px solid; border-left: 1.5px solid; }
+  .ornate-card::after { top: 5px; right: 5px; border-top: 1.5px solid; border-right: 1.5px solid; }
+  .ornate-card .bracket-bl { bottom: 5px; left: 5px; border-bottom: 1.5px solid; border-left: 1.5px solid; }
+  .ornate-card .bracket-br { bottom: 5px; right: 5px; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+
+  /* Vertical numbered step tracker (assignment problem list) */
+  .stepper { position: relative; }
+  .stepper-line { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 1px; background: rgba(255,255,255,0.14); }
+  .stepper-node {
+    width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; shrink: 0; position: relative; z-index: 1;
+  }
+  .stepper-node.done { background: #cdb183; color: #241a0f; }
+  .stepper-node.current { background: transparent; color: #241a0f; }
+  .stepper-node.current .ring2 { position:absolute; inset:0; border-radius:999px; background:#cdb183; }
+  .stepper-node.upcoming { border: 1.5px solid rgba(255,255,255,0.2); color: #b6a995; }
+
+  @keyframes confettiPop {
+    0% { transform: translate(0,0) rotate(0deg); opacity:1; }
+    100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0; }
+  }
+  .confetti-piece { position: fixed; width:6px; height:11px; border-radius:1px; pointer-events:none; z-index:300; animation: confettiPop .9s ease-out forwards; }
+
+  input[type="date"] { color-scheme: dark; }
+  textarea:focus, input:focus { outline: none; }
+</style>
+
+<div class="stage">
+  <div class="app-viewport" id="app-viewport">
+
+    <header class="app-header shrink-0 z-20">
+      <div class="px-5 pb-3 bg-bg flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-surface2 flex items-center justify-center shrink-0" style="border:1px solid rgba(255,255,255,0.18);box-shadow:0 0 0 2px #241a0f, 0 0 0 3px rgba(255,255,255,0.18)">
+            <svg viewBox="0 0 64 64" class="w-7 h-7" aria-hidden="true" fill="none" stroke="#eaddc3" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#c2965c" stroke="#c2965c" opacity="0.9"/>
+              <circle cx="32" cy="36" r="18"/>
+              <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
+              <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#241a0f"/>
+              <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#241a0f"/>
+              <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
+              <path d="M30 38.5h3.5"/>
+              <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
+              <circle cx="39" cy="37.5" r="4" stroke-width="1.8"/>
+              <path d="M43.8 41.5 Q48 47 44.5 52" stroke-width="1.4"/>
+              <path d="M27 46 Q29.5 43.3 32 46 Q34.5 43.3 37 46" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <div class="leading-none">
+            <h1 class="text-[17px] font-display font-bold text-ink tracking-tight leading-none">Piecewise</h1>
+            <p class="text-[8.5px] text-ink3 uppercase tracking-[0.18em] mt-1">Est. in the margins</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface" style="border:1px solid rgba(255,255,255,0.18)" title="Day streak">
+          <span class="w-5 h-5 rounded-full bg-bg flex items-center justify-center" style="border:1px solid rgba(255,255,255,0.18)">
+            <svg class="w-2.5 h-2.5 text-accent-500" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
+          </span>
+          <span id="streak-counter" class="text-xs font-semibold text-ink font-mono">0</span>
+        </div>
+      </div>
+      <div class="h-px bg-line"></div>
+      <div class="h-px bg-bg/0" style="border-top:1px solid rgba(211,214,216,0.08)"></div>
+    </header>
+
+    <main id="main" class="flex-1 overflow-y-auto no-scrollbar relative bg-bg"></main>
+
+    <nav class="app-nav px-3 pt-2 bg-bg border-t border-line flex items-center justify-around shrink-0 z-20">
+      <button data-tab="feed" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="text-[10px] font-medium">Today</span>
+      </button>
+      <button data-tab="upload" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <span class="text-[10px] font-medium">Upload</span>
+      </button>
+      <button data-tab="work" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="4" y="16" width="10" height="4" rx="1"/></svg>
+        <span class="text-[10px] font-medium">Work</span>
+      </button>
+      <button data-tab="study" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+        <span class="text-[10px] font-medium">Study</span>
+      </button>
+      <button data-tab="calendar" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+        <span class="text-[10px] font-medium">Calendar</span>
+      </button>
+    </nav>
+
+    <div id="overlay-root"></div>
+  </div>
+</div>
+
+<script>
+/* ============================== ICONS ============================== */
+const ICONS = {
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  chevronRight: '<path d="M9 6l6 6-6 6"/>',
+  chevronLeft: '<path d="M15 6l-6 6 6 6"/>',
+  lightbulb: '<path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.3V16h6v-1.2c0-.9.4-1.7 1-2.3A6 6 0 0 0 12 2z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  arrowLeft: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+  bookOpen: '<path d="M12 6c-2-1.5-5-2-8-1v13c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1z"/><path d="M12 6v13"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+  trendingUp: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-4 4-3-3-5 5"/>',
+  fileText: '<path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/><path d="M9 13h6M9 17h6M9 9h2"/>',
+  edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
+  sparkle: '<path d="M12 3 3 7.5l9 4.5 9-4.5L12 3z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5 12 21l9-4.5"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 5h13l-3 4 3 4H5"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  flask: '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3"/><path d="M8 15h8"/>',
+  landmark: '<path d="M3 21h18M4 21V10M20 21V10M8 21V10M16 21V10M3 10l9-6 9 6"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/>',
+  sigma: '<path d="M17 5H7l5 7-5 7h10"/>',
+  gradCap: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>',
+  shuffle: '<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>',
+  trash: '<path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+  wand: '<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 6.2l1.4-1.4M17.8 11.8l1.4 1.4M12.2 6.2l-1.4-1.4"/><path d="M5 21l11-11"/>',
+};
+function icon(name, cls) {
+  return `<svg class="${cls || 'w-4 h-4'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
+}
+
+const SUBJECTS = ['Math', 'Science', 'English', 'History', 'Language', 'Other'];
+function subjectIcon(subject) {
+  const map = { Math: 'sigma', Calculus: 'sigma', Science: 'flask', English: 'bookOpen', History: 'landmark', Language: 'globe' };
+  return map[subject] || 'sparkle';
+}
+function subjectColor(subject) {
+  const map = { Math: '#c2965c', Calculus: '#c2965c', Science: '#7f9468', English: '#5f7a92', History: '#ad8a35', Language: '#8a5a72' };
+  return map[subject] || '#b7a58e';
+}
+function subjectChipHTML(subject, size) {
+  const c = subjectColor(subject);
+  const dim = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-9 h-9' : 'w-8 h-8';
+  const iconCls = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
+  return `<div class="${dim} rounded-lg flex items-center justify-center shrink-0" style="background:${c}1c;color:${c};border:1px solid ${c}3d">${icon(subjectIcon(subject), iconCls)}</div>`;
+}
+
+// The Piecewise mascot: a pie-chart face in a top hat, glasses and monocle.
+// Reused at header size and blown up for empty/summary states.
+function mascotMarkHTML(cls) {
+  return `<svg viewBox="0 0 64 64" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="#eaddc3" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#c2965c" stroke="#c2965c" opacity="0.9"/>
+    <circle cx="32" cy="36" r="18"/>
+    <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
+    <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#241a0f"/>
+    <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#241a0f"/>
+    <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
+    <path d="M30 38.5h3.5"/>
+    <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
+    <circle cx="39" cy="37.5" r="4" stroke-width="1.8"/>
+    <path d="M43.8 41.5 Q48 47 44.5 52" stroke-width="1.4"/>
+    <path d="M27 46 Q29.5 43.3 32 46 Q34.5 43.3 37 46" stroke-width="1.8"/>
+  </svg>`;
+}
+function mascotBadgeHTML(dim) {
+  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid rgba(255,255,255,0.18);box-shadow:0 0 0 3px #241a0f, 0 0 0 4px rgba(255,255,255,0.18)">${mascotMarkHTML('w-9 h-9')}</div>`;
+}
+// Pocket-watch tick marks for the progress ring, drawn as short radial lines.
+function ringTicksHTML(cx, cy, rOuter, rInner, count) {
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 - Math.PI / 2;
+    const x1 = cx + rInner * Math.cos(a), y1 = cy + rInner * Math.sin(a);
+    const x2 = cx + rOuter * Math.cos(a), y2 = cy + rOuter * Math.sin(a);
+    out += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}"/>`;
+  }
+  return out;
+}
+function sectionRuleHTML(title, subtitle) {
+  return `<div><div class="section-rule"><h2 class="text-[17px] font-display font-semibold text-ink tracking-tight shrink-0">${title}</h2><span class="diamond"></span></div>${subtitle ? `<p class="text-xs text-ink2 mt-0.5">${subtitle}</p>` : ''}</div>`;
+}
+
+/* ============================== HELPERS ============================== */
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function frac(n, d) { return `<span class="frac"><span class="num">${n}</span><span class="den">${d}</span></span>`; }
+function uid(prefix) { return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`; }
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+function daysUntil(iso) {
+  const due = new Date(iso + 'T23:59:59');
+  const now = new Date();
+  return Math.max(1, Math.ceil((due - now) / 86400000));
+}
+
+function burstConfetti() {
+  return; // celebratory confetti removed for a calmer, professional feel
+  const colors = ['#8b5cf6', '#d946ef', '#f472b6', '#33d17a', '#f5f4f6'];
+  for (let i = 0; i < 26; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    const dx = (Math.random() * 2 - 1) * 130;
+    const dy = -(70 + Math.random() * 150);
+    const rot = (Math.random() * 2 - 1) * 340;
+    p.style.setProperty('--dx', dx + 'px');
+    p.style.setProperty('--dy', dy + 'px');
+    p.style.setProperty('--rot', rot + 'deg');
+    const rect = document.getElementById('app-viewport').getBoundingClientRect();
+    p.style.left = (rect.left + rect.width / 2 + (Math.random() * 80 - 40)) + 'px';
+    p.style.top = (rect.top + rect.height * 0.62) + 'px';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 950);
+  }
+}
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'pop';
+  el.style.cssText = 'position:absolute;left:50%;bottom:86px;transform:translateX(-50%);background:rgba(44,33,22,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.18);color:#f7f2e9;font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;z-index:250;box-shadow:0 10px 30px rgba(0,0,0,.5);white-space:nowrap;';
+  el.textContent = msg;
+  document.getElementById('app-viewport').appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 1500);
+}
+
+/* ============================== SAMPLE CONTENT ============================== */
+const CALC_SAMPLE = {
+  id: 'doc_ftc',
+  title: '5.4 Fundamental Theorem of Calculus',
+  subject: 'Calculus',
+  dueDate: new Date(Date.now() + 86400000 * 4).toISOString().split('T')[0],
+  createdAt: new Date().toISOString(),
+  problems: [
+    { id: 'p1', index: 1, expr: `&int;<sub>-1</sub><sup>5</sup> x&#8309; dx`, steps: [
+      { id: 's1', kind: 'mcq', title: 'Find the antiderivative', question: 'Find F(x) = &int; x&#8309; dx.', options: [`F(x) = ${frac('x&#8310;','6')}`, 'F(x) = 5x&#8308;', `F(x) = ${frac('x&#8309;','5')}`], correctIndex: 0, hint: 'Power rule: &int; x&#8319; dx = x&#8319;&#8314;&#185;/(n+1).' },
+      { id: 's2', kind: 'mcq', title: 'Apply the bounds', question: `Evaluate F(5) &minus; F(&minus;1) using F(x) = ${frac('x&#8310;','6')}.`, options: [`${frac('15625','6')} &minus; ${frac('1','6')} = ${frac('15624','6')}`, `${frac('3125','6')} &minus; ${frac('1','6')}`, `${frac('15625','6')} + ${frac('1','6')}`], correctIndex: 0, hint: '5&#8310; = 15625 and (&minus;1)&#8310; = 1.' },
+      { id: 's3', kind: 'mcq', title: 'Simplify the result', question: `Simplify ${frac('15624','6')}.`, options: ['2604', '2600', '2504'], correctIndex: 0, hint: '15624 &divide; 6 = 2604.' }
+    ]},
+    { id: 'p2', index: 2, expr: `&int;<sub>0</sub><sup>2</sup> (6x&#178; &minus; 4x + 5) dx`, steps: [
+      { id: 's1', kind: 'mcq', title: 'Find the antiderivative', question: 'Find F(x) = &int; (6x&#178; &minus; 4x + 5) dx.', options: ['2x&#179; &minus; 2x&#178; + 5x', '6x&#179; &minus; 4x&#178; + 5x', '3x&#179; &minus; 2x&#178; + 5x'], correctIndex: 0, hint: 'Integrate term by term with the power rule.' },
+      { id: 's2', kind: 'mcq', title: 'Apply the bounds', question: 'Calculate F(2) &minus; F(0).', options: ['18', '24', '12'], correctIndex: 0, hint: '(16 &minus; 8 + 10) &minus; 0 = 18.' }
+    ]},
+    { id: 'p3', index: 3, expr: `&int;<sub>0</sub><sup>1</sup> x<sup>4/5</sup> dx`, steps: [
+      { id: 's1', kind: 'mcq', title: 'Find the antiderivative', question: 'Find F(x) = &int; x<sup>4/5</sup> dx.', options: [`${frac('5','9')}x<sup>9/5</sup>`, `${frac('4','9')}x<sup>9/5</sup>`, `${frac('9','5')}x<sup>9/5</sup>`], correctIndex: 0, hint: '4/5 + 1 = 9/5, then divide by the new exponent.' },
+      { id: 's2', kind: 'mcq', title: 'Apply the bounds', question: 'Evaluate F(1) &minus; F(0).', options: [`${frac('5','9')}`, `${frac('9','5')}`, '1'], correctIndex: 0, hint: '1 raised to any power is still 1.' }
+    ]},
+    { id: 'p4', index: 4, expr: `&int;<sub>-1</sub><sup>0</sup> (2x &minus; e<sup>x</sup>) dx`, steps: [
+      { id: 's1', kind: 'mcq', title: 'Find the antiderivative', question: 'Find F(x) = &int; (2x &minus; e&#183;) dx.', options: ['x&#178; &minus; e<sup>x</sup>', '2x&#178; &minus; e<sup>x</sup>', 'x&#178; + e<sup>x</sup>'], correctIndex: 0, hint: '&int; e<sup>x</sup> dx = e<sup>x</sup>.' },
+      { id: 's2', kind: 'mcq', title: 'Apply the bounds', question: 'Calculate F(0) &minus; F(&minus;1).', options: [`&minus;${frac('1','e')}`, `&minus;1 &minus; ${frac('1','e')}`, '1 &minus; e'], correctIndex: 0, hint: 'F(0) = &minus;1. F(&minus;1) = 1 &minus; 1/e.' }
+    ]},
+    { id: 'p5', index: 5, expr: `&int;<sub>0</sub><sup>&pi;/4</sup> sec&#178; t dt`, steps: [
+      { id: 's1', kind: 'mcq', title: 'Recall the trig antiderivative', question: 'Find F(t) = &int; sec&#178; t dt.', options: ['tan t', 'sec t', 'cos t'], correctIndex: 0, hint: 'd/dt (tan t) = sec&#178; t.' },
+      { id: 's2', kind: 'mcq', title: 'Apply the bounds', question: 'Calculate tan(&pi;/4) &minus; tan(0).', options: ['1', '0', '&radic;2'], correctIndex: 0, hint: 'tan(&pi;/4) = 1.' }
+    ]},
+    { id: 'p6', index: 6, expr: `&int;<sub>1</sub><sup>e</sup> ${frac('x&#178; + x + 1','x')} dx`, steps: [
+      { id: 's1', kind: 'mcq', title: 'Split the fraction', question: `Rewrite ${frac('x&#178; + x + 1','x')} as x + 1 + 1/x, then find F(x).`, options: [`${frac('x&#178;','2')} + x + ln|x|`, `x&#178; + x + ln|x|`, `${frac('x&#178;','2')} + ln|x|`], correctIndex: 0, hint: 'Integrate each term separately.' },
+      { id: 's2', kind: 'mcq', title: 'Apply the bounds', question: 'Evaluate F(e) &minus; F(1).', options: [`${frac('e&#178;','2')} + e &minus; ${frac('1','2')}`, `${frac('e&#178;','2')} + e + 1`, 'e&#178; + e'], correctIndex: 0, hint: 'ln(e) = 1 and ln(1) = 0.' }
+    ]},
+  ]
+};
+
+const BIO_SAMPLE = {
+  id: 'doc_bio', title: 'Unit 4: Cell Division & Genetics',
+  subject: 'Science', dueDate: new Date(Date.now() + 86400000 * 4).toISOString().split('T')[0], createdAt: new Date().toISOString(),
+  problems: [
+    { id: 'p1', index: 1, expr: 'Question 1 &mdash; Mitosis vs. Meiosis', steps: [
+      { id: 's1', kind: 'mcq', title: 'Identify the process', question: 'Which process produces two genetically identical daughter cells?', options: ['Mitosis', 'Meiosis', 'Binary fission only', 'Fertilization'], correctIndex: 0, hint: 'Mitosis is for growth and repair; meiosis makes gametes.' },
+      { id: 's2', kind: 'mcq', title: 'Count the chromosomes', question: 'A human somatic cell has 46 chromosomes. How many does each gamete have after meiosis?', options: ['23', '46', '92', '12'], correctIndex: 0, hint: 'Meiosis halves the chromosome number.' }
+    ]},
+    { id: 'p2', index: 2, expr: 'Question 2 &mdash; Punnett Squares', steps: [
+      { id: 's1', kind: 'mcq', title: 'Set up the cross', question: 'Cross Aa &times; Aa. What fraction of offspring are expected to be homozygous recessive (aa)?', options: [`${frac('1','4')}`, `${frac('1','2')}`, `${frac('3','4')}`, '0'], correctIndex: 0, hint: 'Draw the 2&times;2 Punnett square: AA, Aa, Aa, aa.' },
+      { id: 's2', kind: 'mcq', title: 'Identify the phenotype ratio', question: 'If A is dominant, what is the phenotype ratio (dominant : recessive)?', options: ['3:1', '1:1', '1:2:1', '4:0'], correctIndex: 0, hint: '3 of the 4 boxes show at least one A.' }
+    ]}
+  ]
+};
+
+const ESSAY_SAMPLE = {
+  id: 'doc_essay', title: 'Essay: Ambition in Macbeth',
+  subject: 'English', dueDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0], createdAt: new Date().toISOString(),
+  problems: [
+    { id: 'p1', index: 1, expr: 'Paragraph 1 &mdash; Introduction', steps: [
+      { id: 's1', kind: 'free', title: 'Write your thesis', question: "In one sentence, state your argument about how ambition drives Macbeth's downfall." },
+      { id: 's2', kind: 'free', title: 'Draft the hook', question: 'Write an opening line that draws the reader in.' }
+    ]},
+    { id: 'p2', index: 2, expr: 'Paragraph 2 &mdash; Body: Early Ambition', steps: [
+      { id: 's1', kind: 'free', title: 'Pick your evidence', question: "Choose one quote showing Macbeth's ambition before the murder. Write it out." },
+      { id: 's2', kind: 'free', title: 'Analyze it', question: 'Explain in 2&ndash;3 sentences how this quote supports your thesis.' }
+    ]},
+    { id: 'p3', index: 3, expr: 'Paragraph 3 &mdash; Body: Consequences', steps: [
+      { id: 's1', kind: 'free', title: 'Pick your evidence', question: 'Choose one quote showing the consequences of his ambition. Write it out.' },
+      { id: 's2', kind: 'free', title: 'Analyze it', question: 'Explain in 2&ndash;3 sentences how this quote supports your thesis.' }
+    ]},
+    { id: 'p4', index: 4, expr: 'Paragraph 4 &mdash; Conclusion', steps: [
+      { id: 's1', kind: 'free', title: 'Restate & reflect', question: 'Restate your thesis and note one broader takeaway about ambition.' }
+    ]}
+  ]
+};
+
+const STUDY_DECKS = [
+  { id: 'sat-algebra', exam: 'SAT', title: 'Algebra I', cards: [
+    { id: 'c1', q: 'Solve for x: 2x + 5 = 17', options: ['x = 6', 'x = 5', 'x = 11', 'x = 7'], correctIndex: 0, explain: 'Subtract 5, then divide by 2: 2x = 12, so x = 6.' },
+    { id: 'c2', q: 'If f(x) = 3x &minus; 4, what is f(5)?', options: ['11', '15', '9', '19'], correctIndex: 0, explain: 'f(5) = 3(5) &minus; 4 = 15 &minus; 4 = 11.' },
+    { id: 'c3', q: 'Simplify (x + 3)(x &minus; 3).', options: ['x&#178; &minus; 9', 'x&#178; + 9', 'x&#178; &minus; 6x + 9', '2x'], correctIndex: 0, explain: 'Difference of squares: (x+3)(x&minus;3) = x&#178; &minus; 9.' },
+    { id: 'c4', q: 'Slope of the line through (1, 2) and (3, 8)?', options: ['3', '6', '2', '1/3'], correctIndex: 0, explain: 'Slope = (8&minus;2)/(3&minus;1) = 6/2 = 3.' },
+    { id: 'c5', q: 'Solve: 4(x + 3) = 2x + 18', options: ['x = 3', 'x = 5', 'x = 2', 'x = 6'], correctIndex: 0, explain: '4x + 12 = 2x + 18, so 2x = 6, x = 3.' },
+    { id: 'c6', q: 'If h(x) = x&#178; + 2x, what is h(&minus;3)?', options: ['3', '&minus;3', '9', '15'], correctIndex: 0, explain: 'h(&minus;3) = 9 &minus; 6 = 3.' },
+    { id: 'c7', q: 'What is the solution set of |x &minus; 4| = 6?', options: ['x = 10 or x = &minus;2', 'x = 10 only', 'x = &minus;2 only', 'x = 2 or x = &minus;10'], correctIndex: 0, explain: 'x &minus; 4 = 6 gives x = 10; x &minus; 4 = &minus;6 gives x = &minus;2.' },
+  ]},
+  { id: 'sat-vocab', exam: 'SAT', title: 'Reading & Writing', cards: [
+    { id: 'c1', q: '"Ephemeral" most nearly means:', options: ['Short-lived', 'Permanent', 'Colorful', 'Expensive'], correctIndex: 0, explain: 'Ephemeral describes something that lasts only a very short time.' },
+    { id: 'c2', q: 'Which word could best replace "ubiquitous"?', options: ['Widespread', 'Rare', 'Ancient', 'Quiet'], correctIndex: 0, explain: 'Ubiquitous means present or found everywhere.' },
+    { id: 'c3', q: 'Most concise revision of: "Due to the fact that it was raining, we left early."', options: ['Because it was raining, we left early.', 'It was raining, and due to that we left early.', 'On account of the rain occurring, we left early.', 'No revision needed.'], correctIndex: 0, explain: '"Due to the fact that" is wordy; "because" says the same thing directly.' },
+    { id: 'c4', q: '"Meticulous" most nearly means:', options: ['Extremely careful and precise', 'Careless', 'Fast', 'Expensive'], correctIndex: 0, explain: 'Meticulous describes showing great attention to detail.' },
+    { id: 'c5', q: 'Best transition: "The bridge was closed for repairs. ___, traffic was rerouted."', options: ['As a result', 'However', 'For example', 'In contrast'], correctIndex: 0, explain: 'The rerouting is a direct consequence of the closure, so a result-transition fits.' },
+    { id: 'c6', q: '"Ambiguous" most nearly means:', options: ['Open to more than one interpretation', 'Perfectly clear', 'Very loud', 'Untrue'], correctIndex: 0, explain: 'Ambiguous describes language that can be understood in more than one way.' },
+    { id: 'c7', q: 'Most concise revision of: "In spite of the fact that she was tired, she finished the race."', options: ['Although she was tired, she finished the race.', 'Despite the fact of tiredness, she finished the race.', 'She was tired, in spite of that she finished the race.', 'No revision needed.'], correctIndex: 0, explain: '"In spite of the fact that" can be replaced by the single word "although."' },
+  ]},
+  { id: 'sat-data', exam: 'SAT', title: 'Problem Solving & Data', cards: [
+    { id: 'c1', q: 'A dataset has a mean of 50. If every value increases by 5, the new mean is:', options: ['55', '50', '45', '5'], correctIndex: 0, explain: 'Shifting every value by a constant shifts the mean by that same constant.' },
+    { id: 'c2', q: 'A bag has 3 red and 5 blue marbles. What is P(blue)?', options: ['5/8', '3/8', '5/3', '1/2'], correctIndex: 0, explain: 'There are 8 marbles total, 5 of which are blue: 5/8.' },
+    { id: 'c3', q: 'A line passes through (0, 2) and rises 3 for every 1 increase in x. What is y when x = 4?', options: ['14', '12', '9', '6'], correctIndex: 0, explain: 'y = 2 + 3x, so y = 2 + 3(4) = 14.' },
+    { id: 'c4', q: 'A scatterplot shows a negative trend between TV hours and test scores. This suggests:', options: ['A negative association, not necessarily causation', 'TV causes lower scores', 'No relationship exists', 'A positive association'], correctIndex: 0, explain: 'Correlation in a scatterplot describes association, not proof of cause.' },
+    { id: 'c5', q: 'A survey of 200 students found 120 prefer online classes. What percent prefer online?', options: ['60%', '40%', '120%', '20%'], correctIndex: 0, explain: '120/200 = 0.60 = 60%.' },
+    { id: 'c6', q: 'What is the median of {3, 7, 9, 12, 15}?', options: ['9', '7', '12', '9.2'], correctIndex: 0, explain: 'With 5 values in order, the median is the middle one: 9.' },
+    { id: 'c7', q: 'A line with slope 0 is:', options: ['Horizontal', 'Vertical', 'Undefined', 'Diagonal'], correctIndex: 0, explain: 'A slope of 0 means no rise over run &mdash; a flat, horizontal line.' },
+  ]},
+  { id: 'act-science', exam: 'ACT', title: 'Science Reasoning (Optional)', cards: [
+    { id: 'c1', q: 'A graph shows temperature rising linearly from 20&deg;C at t=0 to 50&deg;C at t=6hr. What is the rate?', options: ['5&deg;C/hr', '30&deg;C/hr', '3&deg;C/hr', '10&deg;C/hr'], correctIndex: 0, explain: 'Change in temp (30&deg;C) over change in time (6hr) = 5&deg;C per hour.' },
+    { id: 'c2', q: 'Three trials show reaction rate drops as concentration drops. This suggests rate is:', options: ['Directly related to concentration', 'Unrelated to concentration', 'Inversely related to concentration', 'Constant'], correctIndex: 0, explain: 'As one variable decreases and the other decreases too, they move together &mdash; a direct relationship.' },
+    { id: 'c3', q: 'In an experiment testing plant growth vs. sunlight hours, the dependent variable is:', options: ['Plant growth', 'Sunlight hours', 'Soil type', 'Pot size'], correctIndex: 0, explain: 'The dependent variable is what you measure as an outcome &mdash; growth responds to sunlight.' },
+    { id: 'c4', q: 'A control group shows no change while the experimental group shows increased growth. This suggests the tested variable:', options: ['Had an effect, since the experimental group differed from the control', 'Had no effect', 'Was not actually tested', 'Should be removed from the study'], correctIndex: 0, explain: 'The control isolates the baseline; a difference from it points to the variable\'s effect.' },
+    { id: 'c5', q: 'A data table shows pressure increasing as volume decreases at constant temperature. This best illustrates:', options: ['An inverse relationship between pressure and volume', 'A direct relationship', 'No relationship', 'A relationship that depends on color'], correctIndex: 0, explain: 'As one variable goes up while the other goes down, that is an inverse (negative) relationship.' },
+    { id: 'c6', q: 'In a well-designed experiment, only one variable should be changed at a time so that:', options: ['Any observed effect can be attributed to that variable alone', 'The experiment runs faster', 'The data table looks simpler', 'The control group can be skipped'], correctIndex: 0, explain: 'Changing multiple variables at once makes it impossible to isolate which one caused an effect.' },
+  ]},
+  { id: 'act-english', exam: 'ACT', title: 'Grammar & Usage', cards: [
+    { id: 'c1', q: '"Neither the teacher nor the students ___ ready."', options: ['were', 'was', 'is', 'be'], correctIndex: 0, explain: 'With "neither/nor," the verb agrees with the nearer subject &mdash; "students" is plural, so "were."' },
+    { id: 'c2', q: 'Which is correctly punctuated?', options: ['After the game, we celebrated.', 'After the game we, celebrated.', 'After, the game we celebrated.', 'After the game we celebrated,.'], correctIndex: 0, explain: 'A comma follows an introductory phrase before the main clause.' },
+    { id: 'c3', q: 'Best way to join two independent clauses without a conjunction:', options: ['Use a semicolon', 'Use a comma', 'Use no punctuation', 'Use a hyphen'], correctIndex: 0, explain: 'A semicolon can join two complete, related sentences on its own.' },
+    { id: 'c4', q: 'Choose correctly: "___ important to check the label."', options: ["It's", 'Its', 'Its\'', 'It'], correctIndex: 0, explain: '"It\'s" is the contraction of "it is," which fits here.' },
+    { id: 'c5', q: 'Which is correct?', options: ['Between you and me, the plan will work.', 'Between you and I, the plan will work.', 'Between you and myself, the plan will work.', 'Between I and you, the plan will work.'], correctIndex: 0, explain: 'A preposition like "between" takes an object pronoun: "me," not "I."' },
+    { id: 'c6', q: 'Which sentence is correctly parallel?', options: ['She likes hiking, swimming, and biking.', 'She likes hiking, to swim, and biking.', 'She likes to hike, swimming, and bike.', 'She likes hiking, swims, and to bike.'], correctIndex: 0, explain: 'Parallel structure keeps all items in a list in the same grammatical form &mdash; here, all gerunds.' },
+  ]},
+  { id: 'act-math', exam: 'ACT', title: 'Math: Algebra & Functions', cards: [
+    { id: 'c1', q: 'Solve: 3(x &minus; 2) = 15', options: ['x = 7', 'x = 5', 'x = 9', 'x = 4'], correctIndex: 0, explain: '3x &minus; 6 = 15, so 3x = 21, x = 7.' },
+    { id: 'c2', q: 'If g(x) = x&#178; &minus; 1, what is g(4)?', options: ['15', '16', '7', '17'], correctIndex: 0, explain: 'g(4) = 4&#178; &minus; 1 = 16 &minus; 1 = 15.' },
+    { id: 'c3', q: 'Simplify (2x&#178;)(3x&#179;).', options: ['6x&#8309;', '5x&#8309;', '6x&#178;', '6x&#179;'], correctIndex: 0, explain: 'Multiply coefficients and add exponents: 2&times;3=6, x&#178;&times;x&#179;=x&#8309;.' },
+    { id: 'c4', q: 'What is the y-intercept of y = &minus;2x + 7?', options: ['7', '-2', '0', '3.5'], correctIndex: 0, explain: 'The y-intercept is the constant term when x = 0: y = 7.' },
+    { id: 'c5', q: 'Solve: (x &minus; 3)(x + 5) = 0', options: ['x = 3 or x = &minus;5', 'x = &minus;3 or x = 5', 'x = 3 or x = 5', 'x = 0 only'], correctIndex: 0, explain: 'Set each factor to zero: x &minus; 3 = 0 or x + 5 = 0.' },
+    { id: 'c6', q: 'If f(x) = 2x &minus; 5, what is f&#8315;&#185;(x)?', options: ['(x + 5) / 2', '(x &minus; 5) / 2', '2x + 5', '(x + 2) / 5'], correctIndex: 0, explain: 'Swap x and y then solve: x = 2y &minus; 5 &rarr; y = (x+5)/2.' },
+    { id: 'c7', q: 'Simplify: (4x&#179;) / (2x)', options: ['2x&#178;', '2x&#179;', '4x&#178;', '8x&#178;'], correctIndex: 0, explain: 'Divide coefficients (4/2=2) and subtract exponents (3-1=2): 2x&#178;.' },
+  ]},
+  { id: 'gmat-quant', exam: 'GMAT', title: 'Quant Word Problems', cards: [
+    { id: 'c1', q: 'A store marks up cost 40%, then discounts the marked price 25%. Net effect on the original cost?', options: ['5% increase', '15% decrease', 'No change', '10% increase'], correctIndex: 0, explain: '1.40 &times; 0.75 = 1.05 &mdash; a net 5% increase over the original cost.' },
+    { id: 'c2', q: 'If 3 workers finish a job in 8 days at a constant rate, how many days for 4 workers?', options: ['6 days', '8 days', '10.7 days', '5 days'], correctIndex: 0, explain: 'Total work = 24 worker-days. 24 &divide; 4 workers = 6 days.' },
+    { id: 'c3', q: 'Average of 5 numbers is 20. Removing one number drops the average of the remaining 4 to 18. What was removed?', options: ['28', '22', '18', '26'], correctIndex: 0, explain: '5&times;20 &minus; 4&times;18 = 100 &minus; 72 = 28.' },
+    { id: 'c4', q: 'Ratio of boys to girls is 3:5 in a class of 40. How many girls?', options: ['25', '24', '15', '20'], correctIndex: 0, explain: '8 parts = 40, so 1 part = 5. Girls = 5 parts = 25.' },
+    { id: 'c5', q: 'A car travels 240 miles in 4 hours. At the same rate, how long for 360 miles?', options: ['6 hours', '5 hours', '8 hours', '7.5 hours'], correctIndex: 0, explain: 'Rate = 60 mph. 360 / 60 = 6 hours.' },
+    { id: 'c6', q: 'If x is 20% more than y, what percent of x is y (rounded)?', options: ['83.3%', '80%', '120%', '90%'], correctIndex: 0, explain: 'x = 1.2y, so y = x / 1.2 &asymp; 0.833x, about 83.3%.' },
+    { id: 'c7', q: 'A mixture is 30% acid. How many liters of pure acid must be added to 10 liters of it to make a 50% acid mixture?', options: ['4 liters', '2 liters', '5 liters', '6 liters'], correctIndex: 0, explain: '(3 + x) / (10 + x) = 0.5 &rarr; 3 + x = 5 + 0.5x &rarr; x = 4.' },
+  ]},
+  { id: 'gmat-verbal', exam: 'GMAT', title: 'Critical Reasoning', cards: [
+    { id: 'c1', q: '"Sales rose after the ad campaign, so the campaign caused the rise." This argument\'s main weakness:', options: ['It confuses correlation with causation', 'It uses too much data', 'It is too specific', 'It lacks a conclusion'], correctIndex: 0, explain: 'Other factors could explain the sales increase &mdash; the argument assumes causation from mere correlation.' },
+    { id: 'c2', q: 'Which best strengthens "This drug reduces headaches"?', options: ['A controlled trial showing fewer headaches vs. placebo', 'A testimonial from one patient', 'A larger marketing budget', 'A patent filing'], correctIndex: 0, explain: 'A controlled trial isolates the drug\'s effect from other variables &mdash; strong causal evidence.' },
+    { id: 'c3', q: '"All successful CEOs have MBAs, so an MBA will make you a successful CEO." The flawed assumption:', options: ['That having an MBA is sufficient, not just common, among CEOs', 'That MBAs are expensive', 'That CEOs work hard', 'That correlation implies no relationship'], correctIndex: 0, explain: 'The argument treats a shared trait as a guarantee of success &mdash; a classic sufficiency error.' },
+    { id: 'c4', q: '"Most successful startups have young founders, so youth causes startup success." The main flaw:', options: ['It treats a correlation as causation, ignoring other factors', 'It uses too small a sample', 'It contradicts itself', 'It lacks any evidence at all'], correctIndex: 0, explain: 'Founder age might just correlate with other success factors like risk tolerance or timing, not cause success.' },
+    { id: 'c5', q: 'Which best weakens: "Company X\'s new ad campaign caused a 20% sales increase"?', options: ['Industry-wide sales rose 25% in the same period', 'The campaign used bright colors', 'The company hired a new CEO last year', 'Competitors also advertise'], correctIndex: 0, explain: 'If the whole industry grew even faster without the campaign, the campaign likely was not the cause.' },
+    { id: 'c6', q: 'An argument based on a small, unrepresentative sample commits which flaw?', options: ['Hasty generalization', 'Circular reasoning', 'False dilemma', 'Appeal to authority'], correctIndex: 0, explain: 'Drawing a broad conclusion from too little (or biased) evidence is a hasty generalization.' },
+  ]},
+  { id: 'gmat-data', exam: 'GMAT', title: 'Data Insights', cards: [
+    { id: 'c1', q: 'Quarterly revenue ($k): Q1=100, Q2=120, Q3=90, Q4=150. What is the percent change from Q3 to Q4?', options: ['+66.7%', '+50%', '+60%', '+40%'], correctIndex: 0, explain: '(150 &minus; 90) / 90 = 0.667, a 66.7% increase.' },
+    { id: 'c2', q: 'Source A (small sample) reports average age 34. Source B (much larger, representative sample) reports 31. For estimating the population average, you should generally:', options: ['Favor Source B, the larger representative sample', 'Favor Source A since it was reported first', 'Average the two equally', 'Discard both'], correctIndex: 0, explain: 'A larger, representative sample is generally more reliable for population estimates.' },
+    { id: 'c3', q: 'A chart shows a correlation coefficient of r = 0.85 between study hours and test score. This indicates:', options: ['A strong positive linear relationship, not proof of causation', 'Studying causes higher scores', 'No meaningful relationship', 'A weak relationship'], correctIndex: 0, explain: 'r close to 1 signals a strong linear association only &mdash; causation needs more evidence.' },
+    { id: 'c4', q: 'Data sufficiency: (1) x &gt; 0  (2) x&#178; = 16. Is x determined?', options: ['Only when both statements are used together', 'Statement 1 alone is sufficient', 'Statement 2 alone is sufficient', 'Neither is sufficient even together'], correctIndex: 0, explain: 'Statement 2 alone gives x = &plusmn;4; adding statement 1 narrows it to x = 4.' },
+    { id: 'c5', q: 'A pie chart shows market share: A=40%, B=35%, C=25% of a $2,000,000 market. What is B\'s share in dollars?', options: ['$700,000', '$800,000', '$650,000', '$500,000'], correctIndex: 0, explain: '35% of $2,000,000 = 0.35 &times; 2,000,000 = $700,000.' },
+    { id: 'c6', q: 'Two variables show a correlation coefficient of r = &minus;0.9. This means:', options: ['A strong negative linear relationship', 'A strong positive linear relationship', 'No relationship', 'A weak relationship'], correctIndex: 0, explain: 'r close to &minus;1 signals a strong linear relationship where one variable rises as the other falls.' },
+    { id: 'c7', q: 'A box plot\'s median line sits closer to the bottom of the box than the top. This suggests the middle 50% of the data is:', options: ['Skewed toward lower values', 'Perfectly symmetric', 'Skewed toward higher values', 'Impossible to interpret'], correctIndex: 0, explain: 'A median pulled toward one edge of the box indicates the data bunches more on that side.' },
+  ]},
+  { id: 'lsat-lr', exam: 'LSAT', title: 'Logical Reasoning', cards: [
+    { id: 'c1', q: '"All lawyers are detail-oriented. Maria is detail-oriented. Therefore Maria is a lawyer." This is:', options: ['Affirming the consequent (a logical flaw)', 'A valid deduction', 'An appeal to authority', 'A sound syllogism'], correctIndex: 0, explain: 'Being detail-oriented doesn\'t make someone a lawyer &mdash; the argument reverses the original conditional.' },
+    { id: 'c2', q: 'The contrapositive of "If it rains, the game is cancelled" is:', options: ['If the game is not cancelled, it did not rain', 'If it does not rain, the game is not cancelled', 'If the game is cancelled, it rained', 'If it rains, the game is not cancelled'], correctIndex: 0, explain: 'A contrapositive negates and swaps both parts: not-Q &rarr; not-P.' },
+    { id: 'c3', q: '"The bridge is unsafe, so it should be closed. Closing it will prevent accidents." This assumes:', options: ['Closing the bridge actually removes the danger it poses', 'The bridge was recently built', 'No other bridges are unsafe', 'Accidents are common on bridges'], correctIndex: 0, explain: 'The argument leaps from "should close" to "will prevent accidents" without confirming closure removes the risk.' },
+    { id: 'c4', q: 'A conditional rule "If X then Y" logically also requires:', options: ['If not Y, then not X (its contrapositive)', 'If Y then X', 'If not X then not Y', 'Nothing further'], correctIndex: 0, explain: 'Only the contrapositive is logically guaranteed to be true alongside the original conditional.' },
+    { id: 'c5', q: '"Some cats are black. Some black things are heavy. Therefore some cats are heavy." This reasoning is:', options: ['Invalid &mdash; the middle term does not guarantee overlap', 'A valid deduction', 'Circular reasoning', 'An appeal to authority'], correctIndex: 0, explain: 'The "black" cats and "black" heavy things might not be the same black things &mdash; the link is not guaranteed.' },
+    { id: 'c6', q: 'An argument that attacks the person making a claim rather than the claim itself commits:', options: ['An ad hominem fallacy', 'A straw man fallacy', 'A slippery slope', 'A false analogy'], correctIndex: 0, explain: 'Ad hominem means attacking the arguer instead of addressing the argument.' },
+    { id: 'c7', q: '"If the alarm sounds, evacuate. The alarm did not sound. Therefore no one evacuated." This reasoning:', options: ['Denies the antecedent (a logical flaw)', 'Is a valid conditional argument', 'Affirms the consequent', 'Is a sound contrapositive'], correctIndex: 0, explain: 'Not-P does not logically guarantee not-Q; there could be other reasons to evacuate.' },
+  ]},
+  { id: 'lsat-rc', exam: 'LSAT', title: 'Reading Comprehension', cards: [
+    { id: 'c1', q: 'A "primary purpose" question asks you to identify:', options: ["The author's main goal in writing the passage, not just one detail", 'The most surprising fact in the passage', 'The last sentence\'s topic', 'A minor example the author cites'], correctIndex: 0, explain: 'Primary purpose questions test whether you grasped the passage as a whole, not a single detail.' },
+    { id: 'c2', q: 'When a passage presents two contrasting viewpoints, an "author\'s attitude" question is best answered by:', options: ['Reading tone words and qualifying language the author uses', 'Picking whichever viewpoint appears first', 'Assuming neutrality by default', 'Counting how many sentences support each side'], correctIndex: 0, explain: "Tone and hedging language (e.g. \"arguably,\" \"however\") reveal the author's real stance." },
+    { id: 'c3', q: 'A question asking what the passage "most strongly suggests" requires:', options: ['A reasonable inference supported by the text', 'An explicitly stated fact', 'Outside knowledge of the topic', 'The passage\'s literal first sentence'], correctIndex: 0, explain: 'Inference questions go one logical step beyond what is stated, but must stay text-supported.' },
+    { id: 'c4', q: 'The most effective first pass through an LSAT RC passage is to:', options: ['Read for structure and argument first, details second', 'Memorize every fact before reading the questions', 'Skip straight to the questions', 'Read only the first and last paragraphs'], correctIndex: 0, explain: "Knowing the passage's shape lets you locate details quickly once questions ask for them." },
+    { id: 'c5', q: 'A "function" question (e.g. "why does the author mention X in line 12?") asks about:', options: ['The role that detail plays in the passage\'s larger argument', 'Only the literal content of that detail', 'Whether the detail is true', 'The author\'s biography'], correctIndex: 0, explain: 'Function questions test purpose &mdash; why a detail is there, not just what it says.' },
+    { id: 'c6', q: 'In Comparative Reading (two paired passages), a question about their relationship usually tests:', options: ['How the passages agree, disagree, or complement each other', 'Which passage was written first', 'Which passage is longer', 'The authors\' occupations'], correctIndex: 0, explain: 'Comparative Reading questions focus on the relationship between the two viewpoints.' },
+    { id: 'c7', q: 'The best way to handle an RC question about an unfamiliar term is to:', options: ['Infer its meaning from context in the passage', 'Rely on outside knowledge of the term', 'Skip the question', 'Assume it means its most common dictionary definition'], correctIndex: 0, explain: 'LSAT passages define their own terms in context &mdash; use the passage, not outside knowledge.' },
+  ]},
+  { id: 'lsat-writing', exam: 'LSAT', title: 'Argumentative Writing Prep', cards: [
+    { id: 'c1', kind: 'free', q: "The LSAT's Argumentative Writing section (added in 2026) is unscored but sent to law schools. State a clear one-sentence position on this prompt: should social media platforms verify user identities? Write your thesis." },
+    { id: 'c2', kind: 'free', q: 'List two pieces of evidence or reasoning that support the position you just took.' },
+    { id: 'c3', kind: 'free', q: "Write one sentence acknowledging the strongest counterargument to your position, and explain briefly why your position still holds." },
+    { id: 'c4', kind: 'free', q: "Identify one piece of evidence that could undermine your position. How would you address it in one sentence?" },
+    { id: 'c5', kind: 'free', q: "Write a concluding sentence that reinforces your thesis without simply repeating it word for word." },
+  ]},
+  { id: 'mcat-bio', exam: 'MCAT', title: 'Cell Biology', cards: [
+    { id: 'c1', q: 'Which organelle produces most ATP via oxidative phosphorylation?', options: ['Mitochondria', 'Golgi apparatus', 'Ribosome', 'Lysosome'], correctIndex: 0, explain: 'The electron transport chain and ATP synthase are located on the inner mitochondrial membrane.' },
+    { id: 'c2', q: 'During which phase of mitosis do sister chromatids separate?', options: ['Anaphase', 'Prophase', 'Metaphase', 'Telophase'], correctIndex: 0, explain: 'In anaphase, spindle fibers pull sister chromatids to opposite poles.' },
+    { id: 'c3', q: 'Facilitated diffusion requires:', options: ['A membrane channel or carrier protein, no ATP', 'Direct ATP hydrolysis', 'A concentration gradient against the flow', 'Vesicle formation'], correctIndex: 0, explain: 'It moves solutes down their gradient through a protein, passively &mdash; no energy input needed.' },
+    { id: 'c4', q: 'The lac operon is repressed when:', options: ['Lactose is absent, so the repressor binds the operator', 'Lactose is present', 'Glucose is absent', 'RNA polymerase is overexpressed'], correctIndex: 0, explain: 'Without lactose, the repressor protein binds the operator and blocks transcription.' },
+    { id: 'c5', q: 'Which structure regulates what enters and exits the cell?', options: ['The plasma membrane', 'The nucleolus', 'The Golgi apparatus', 'The cytoskeleton'], correctIndex: 0, explain: 'The selectively permeable plasma membrane controls the movement of substances into and out of the cell.' },
+    { id: 'c6', q: 'Enzymes speed up reactions by:', options: ['Lowering the activation energy', 'Raising the activation energy', 'Increasing the reaction\'s free energy change', 'Being consumed in the reaction'], correctIndex: 0, explain: 'Enzymes provide an alternate pathway with lower activation energy without changing the overall energy change.' },
+    { id: 'c7', q: 'In the cell cycle, DNA replication occurs during:', options: ['S phase', 'G1 phase', 'Mitosis', 'G0 phase'], correctIndex: 0, explain: 'S phase ("synthesis") is when the cell duplicates its DNA before division.' },
+  ]},
+  { id: 'mcat-chem', exam: 'MCAT', title: 'General Chemistry', cards: [
+    { id: 'c1', q: 'In a redox reaction, the species that loses electrons is:', options: ['Oxidized (the reducing agent)', 'Reduced (the oxidizing agent)', 'Unchanged', 'A catalyst'], correctIndex: 0, explain: 'Losing electrons is oxidation &mdash; that species reduces the other, so it is the reducing agent.' },
+    { id: 'c2', q: 'What is the conjugate base of H&#8322;CO&#8323;?', options: ['HCO&#8323;&#8315;', 'CO&#8323;&#178;&#8315;', 'H&#8323;O&#8314;', 'OH&#8315;'], correctIndex: 0, explain: 'Removing one proton (H&#8314;) from H&#8322;CO&#8323; gives HCO&#8323;&#8315;.' },
+    { id: 'c3', q: 'For a first-order reaction, doubling the reactant concentration:', options: ['Doubles the rate', 'Quadruples the rate', 'Has no effect on rate', 'Halves the rate'], correctIndex: 0, explain: 'Rate = k[A]&#185;, so rate scales linearly with concentration.' },
+    { id: 'c4', q: 'By Le Chatelier\'s principle, increasing pressure on a gas-phase equilibrium shifts it toward:', options: ['The side with fewer moles of gas', 'The side with more moles of gas', 'Neither side', 'Whichever side is exothermic'], correctIndex: 0, explain: 'The system shifts to reduce the increased pressure, favoring fewer gas molecules.' },
+    { id: 'c5', q: 'pH is defined as:', options: ['&minus;log[H&#8314;]', 'log[H&#8314;]', '[H&#8314;] &times; [OH&#8315;]', '&minus;log[OH&#8315;]'], correctIndex: 0, explain: 'pH is the negative base-10 logarithm of the hydrogen ion concentration.' },
+    { id: 'c6', q: 'A catalyst speeds up a reaction by:', options: ['Lowering activation energy without being consumed', 'Raising the reaction\'s equilibrium constant', 'Being consumed and regenerated only once', 'Increasing the reactants\' concentration'], correctIndex: 0, explain: 'Catalysts provide a lower-energy pathway and are regenerated at the end of the reaction.' },
+  ]},
+  { id: 'mcat-cars', exam: 'MCAT', title: 'CARS: Critical Reasoning', cards: [
+    { id: 'c1', q: 'MCAT CARS passages are drawn primarily from:', options: ['Humanities and social sciences, not natural science', 'Organic chemistry', 'Physics and math', 'Anatomy textbooks'], correctIndex: 0, explain: 'CARS deliberately avoids science content so it tests reading and reasoning, not recall.' },
+    { id: 'c2', q: 'A "main idea" CARS question is best answered by:', options: ["Synthesizing the passage's overall argument, not one detail", 'Quoting the first sentence', 'Picking the most technical-sounding choice', 'Recalling outside knowledge on the topic'], correctIndex: 0, explain: 'Main idea questions test whether you tracked the argument as a whole.' },
+    { id: 'c3', q: 'If an author makes a claim and then adds "however," the clause that follows usually:', options: ['Signals a shift or limitation to weigh against the initial claim', 'Restates the same claim', 'Is irrelevant to the argument', 'Contradicts the passage\'s purpose entirely'], correctIndex: 0, explain: '"However" flags a qualification the author wants you to factor into the overall argument.' },
+    { id: 'c4', q: 'The best CARS strategy under time pressure is to:', options: ["Read actively for argument structure, then answer from the passage's logic", 'Memorize every detail before answering', 'Answer from outside knowledge when possible', 'Skim only the topic sentences'], correctIndex: 0, explain: 'CARS rewards passage-based reasoning, not speed-reading for facts or outside expertise.' },
+    { id: 'c5', q: 'A "strengthen/weaken" CARS question asks you to:', options: ['Evaluate how new information would affect the author\'s argument', 'Recall a fact from the passage', 'Define a difficult vocabulary word', 'Identify the passage\'s genre'], correctIndex: 0, explain: 'These questions test whether you understand the argument well enough to see how new evidence affects it.' },
+    { id: 'c6', q: 'If a passage\'s tone is described as "measured," the author most likely:', options: ['Presents claims cautiously, without overstatement', 'Argues aggressively for one side', 'Refuses to take any position', 'Uses highly emotional language'], correctIndex: 0, explain: '"Measured" tone suggests careful, restrained, balanced presentation of claims.' },
+    { id: 'c7', q: 'When two authors disagree in a CARS passage, the correct answer to an inference question usually:', options: ['Is consistent with both viewpoints presented, not just one', 'Favors whichever author is quoted first', 'Ignores one author entirely', 'Requires outside knowledge to resolve'], correctIndex: 0, explain: 'A safe inference respects everything the passage says, including both perspectives.' },
+  ]},
+];
+const EXAMS = [
+  { key: 'SAT', label: 'SAT', blurb: 'Digital: Reading & Writing, Math' },
+  { key: 'ACT', label: 'ACT', blurb: 'English, Math, Reading + science (optional)' },
+  { key: 'GMAT', label: 'GMAT', blurb: 'Focus Edition: Quant, Verbal & Data Insights' },
+  { key: 'LSAT', label: 'LSAT', blurb: 'Logical reasoning, reading comp & writing' },
+  { key: 'MCAT', label: 'MCAT', blurb: 'Bio/chem, CARS & reasoning' },
+];
+
+/* ============================== STATE ============================== */
+let state = {
+  assignments: [],
+  studyProgress: {},
+  streakDays: 0,
+  lastActiveDate: null,
+  ui: { tab: 'feed', workView: 'list', workAssignmentId: null, workPlayer: null,
+        studyExam: null, studyDeckId: null, studyCardIndex: 0, studySession: null,
+        draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null }
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('piecewise_v2');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state = Object.assign(state, parsed, { ui: state.ui });
+    }
+  } catch (e) {}
+  if (!state.assignments || state.assignments.length === 0) {
+    state.assignments = [JSON.parse(JSON.stringify(CALC_SAMPLE))];
+  }
+  if (!state.studyProgress) state.studyProgress = {};
+}
+function saveState() {
+  try {
+    const { ui, ...persist } = state;
+    localStorage.setItem('piecewise_v2', JSON.stringify(persist));
+  } catch (e) {}
+  const el = document.getElementById('streak-counter');
+  if (el) el.textContent = state.streakDays || 0;
+}
+
+function markActivity() {
+  const today = todayStr();
+  if (state.lastActiveDate === today) return;
+  const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  state.streakDays = (state.lastActiveDate === yest) ? (state.streakDays || 0) + 1 : 1;
+  state.lastActiveDate = today;
+}
+
+/* ============================== STATS / SCHEDULER ============================== */
+function getAssignmentStats(ass) {
+  let total = 0, completed = 0, doneToday = 0;
+  ass.problems.forEach(p => p.steps.forEach(s => {
+    total++;
+    if (s.completed) { completed++; if (s.completedAt === todayStr()) doneToday++; }
+  }));
+  return { total, completed, doneToday, remaining: total - completed };
+}
+function isProblemComplete(p) { return p.steps.every(s => s.completed); }
+function isAssignmentComplete(ass) { return ass.problems.every(isProblemComplete); }
+
+function countStudyDoneToday() {
+  let n = 0;
+  Object.values(state.studyProgress).forEach(deck => Object.values(deck).forEach(c => { if (c.completedAt === todayStr()) n++; }));
+  return n;
+}
+function isCardDone(deckId, cardId) { return !!(state.studyProgress[deckId] && state.studyProgress[deckId][cardId]); }
+
+function computeDailyPace(ass) {
+  const stats = getAssignmentStats(ass);
+  if (stats.remaining === 0) return 0;
+  const daysLeft = daysUntil(ass.dueDate);
+  return Math.max(1, Math.ceil(stats.remaining / daysLeft));
+}
+
+function scopedAssignments(scopeAssignmentId) {
+  const pool = scopeAssignmentId ? state.assignments.filter(a => a.id === scopeAssignmentId) : state.assignments;
+  return [...pool].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+}
+
+// Builds the full remaining backlog, round-robined across assignments (soonest-due first each
+// round) so the mix keeps flowing rather than stopping once today's small goal is hit.
+function buildFeedQueue(scopeAssignmentId) {
+  const lanes = scopedAssignments(scopeAssignmentId).map(ass => {
+    const remaining = [];
+    ass.problems.forEach(p => p.steps.forEach(s => { if (!s.completed) remaining.push({ type: 'homework', assignmentId: ass.id, problemId: p.id, stepId: s.id }); }));
+    return remaining.length ? { remaining, batchSize: computeDailyPace(ass) } : null;
+  }).filter(Boolean);
+
+  const items = [];
+  let progress = lanes.length > 0;
+  while (progress) {
+    progress = false;
+    for (const lane of lanes) {
+      if (lane.remaining.length === 0) continue;
+      items.push(...lane.remaining.splice(0, lane.batchSize));
+      if (lane.remaining.length > 0) progress = true;
+    }
+  }
+  return items;
+}
+
+function todaysGoal(scopeAssignmentId) {
+  return scopedAssignments(scopeAssignmentId).reduce((sum, ass) => sum + computeDailyPace(ass), 0);
+}
+
+function getAssignment(id) { return state.assignments.find(a => a.id === id); }
+function getProblem(ass, id) { return ass.problems.find(p => p.id === id); }
+function getStep(p, id) { return p.steps.find(s => s.id === id); }
+function getDeck(id) { return STUDY_DECKS.find(d => d.id === id); }
+
+function findNextStepInAssignment(ass, afterProblemId) {
+  let passed = !afterProblemId;
+  for (const p of ass.problems) {
+    if (!passed) { if (p.id === afterProblemId) passed = true; continue; }
+    for (const s of p.steps) if (!s.completed) return { problemId: p.id, stepId: s.id };
+  }
+  for (const p of ass.problems) for (const s of p.steps) if (!s.completed) return { problemId: p.id, stepId: s.id };
+  return null;
+}
+
+/* ============================== NAV ============================== */
+function switchTab(tab) {
+  state.ui.tab = tab;
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const active = b.dataset.tab === tab;
+    b.classList.toggle('text-ink', active);
+    b.classList.toggle('text-ink2', !active);
+  });
+  render();
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+function render() {
+  const main = document.getElementById('main');
+  const tab = state.ui.tab;
+  if (tab === 'feed') main.innerHTML = renderFeedTab();
+  else if (tab === 'upload') main.innerHTML = renderUploadTab();
+  else if (tab === 'work') main.innerHTML = renderWorkTab();
+  else if (tab === 'study') main.innerHTML = renderStudyTab();
+  else if (tab === 'calendar') main.innerHTML = renderCalendarTab();
+  bindDynamicHandlers();
+  saveState();
+}
+
+/* ============================== SHARED: STEP CARD ============================== */
+function priorStepsRecapHTML(p, currentStepId) {
+  const prior = [];
+  for (const s of p.steps) {
+    if (s.id === currentStepId) break;
+    prior.push(s);
+  }
+  const done = prior.filter(s => s.completed);
+  if (done.length === 0) return '';
+  return `
+    <div class="p-3 rounded-xl bg-bg border border-line space-y-1.5">
+      <div class="text-[10px] uppercase font-medium text-ink3 tracking-wide">Your work so far</div>
+      ${done.map(s => `
+        <div class="flex items-start justify-between gap-2 text-[11.5px]">
+          <span class="text-ink3 shrink-0">${escapeHtml(s.title)}</span>
+          <span class="text-ink math text-right">${s.kind === 'mcq' ? s.options[s.selectedIndex] : escapeHtml(s.response || 'Done')}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function stepCardHTML(ass, p, s, badgeText, feedKey) {
+  const draftKey = `${ass.id}_${p.id}_${s.id}`;
+  const sel = state.ui.draftAnswers[draftKey];
+  return `
+    <div class="relative bg-surface border border-line rounded-xl p-4 space-y-4 enter" id="step-card" ${feedKey ? `data-feed-key="${feedKey}"` : ''}>
+      ${feedKey ? `<button data-action="skip-feed-item" data-key="${feedKey}" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-surface2 border border-line text-ink3 flex items-center justify-center z-10" title="Skip for now">${icon('shuffle', 'w-3.5 h-3.5')}</button>` : ''}
+      <div class="flex items-center justify-between border-b border-linesoft pb-2.5 ${feedKey ? 'pr-9' : ''}">
+        <div>
+          <span class="inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style="color:${subjectColor(ass.subject)};background:${subjectColor(ass.subject)}1c;border:1px solid ${subjectColor(ass.subject)}3d">${icon(subjectIcon(ass.subject), 'w-3 h-3')}${escapeHtml(ass.subject || 'Homework')}</span>
+          <h3 class="text-[11px] font-semibold text-ink2 mt-1 truncate max-w-[220px]">${escapeHtml(ass.title)}</h3>
+        </div>
+        <span class="text-[10px] font-mono text-ink3 shrink-0">${badgeText}</span>
+      </div>
+
+      <div class="p-3 rounded-xl bg-bg border border-line">
+        <div class="text-[9.5px] uppercase font-bold text-ink3 tracking-wider mb-1">Problem ${p.index}</div>
+        ${p.expr && p.expr.trim() ? `<div class="text-[16px] text-ink math">${p.expr}</div>` : `<div class="text-[12px] text-ink3 italic">Not added yet. Add it in the step below.</div>`}
+      </div>
+
+      ${priorStepsRecapHTML(p, s.id)}
+
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-ink">${escapeHtml(s.title)}</span>
+          <span class="text-[10px] font-mono text-ink3">~1 min</span>
+        </div>
+        <div class="text-[13px] text-ink2 font-medium math">${s.question}</div>
+      </div>
+
+      ${s.kind === 'mcq' ? mcqBlockHTML(ass, p, s, sel) : s.kind === 'transcribe' ? transcribeBlockHTML(ass, p, s, draftKey) : freeBlockHTML(ass, p, s, draftKey)}
+    </div>
+  `;
+}
+
+function mcqBlockHTML(ass, p, s, sel) {
+  const showResult = sel !== undefined && sel.checked;
+  return `
+    <div class="space-y-2">
+      ${s.options.map((opt, idx) => {
+        let cls = '';
+        if (showResult) {
+          if (idx === s.correctIndex) cls = 'correct';
+          else if (idx === sel.index) cls = 'wrong';
+        } else if (sel && sel.index === idx) cls = 'selected';
+        return `
+          <button data-action="select-opt" data-ass="${ass.id}" data-prob="${p.id}" data-step="${s.id}" data-idx="${idx}"
+                  class="option-btn w-full p-3 rounded-xl border border-line bg-bg/60 text-left flex items-center gap-3 ${cls}">
+            <span class="bubble w-6 h-6 rounded-full border border-line flex items-center justify-center text-[11px] font-bold shrink-0">${String.fromCharCode(65 + idx)}</span>
+            <span class="text-[12.5px] text-ink math flex-1">${opt}</span>
+            ${showResult && idx === s.correctIndex ? icon('check', 'w-4 h-4 text-good shrink-0') : ''}
+            ${showResult && idx === sel.index && idx !== s.correctIndex ? icon('x', 'w-4 h-4 text-bad shrink-0') : ''}
+          </button>`;
+      }).join('')}
+    </div>
+    ${showResult && sel.index !== s.correctIndex ? `<div class="text-[11.5px] text-bad font-semibold flex items-center gap-1.5">${icon('x','w-3.5 h-3.5')} Not quite. Try another option.</div>` : ''}
+    <div id="hint-box" class="hidden p-3 rounded-xl bg-bg border border-line text-[11.5px] text-ink2 space-y-1">
+      <div class="font-bold flex items-center gap-1.5">${icon('lightbulb','w-3.5 h-3.5')} Hint</div>
+      <div class="math text-ink">${s.hint || 'Break the expression into smaller pieces.'}</div>
+    </div>
+    <div class="flex items-center justify-between pt-1">
+      <button data-action="toggle-hint" class="text-xs text-ink2 flex items-center gap-1.5">${icon('lightbulb','w-3.5 h-3.5')} Hint</button>
+      ${showResult && sel.index === s.correctIndex
+        ? `<span class="px-4 py-2 rounded-xl bg-good/15 text-good font-bold text-xs flex items-center gap-1.5">${icon('check','w-3.5 h-3.5')} Correct</span>`
+        : `<button data-action="check-answer" data-ass="${ass.id}" data-prob="${p.id}" data-step="${s.id}" class="px-4 py-2 rounded-lg grad-btn text-xs">Check</button>`}
+    </div>
+  `;
+}
+
+function transcribeBlockHTML(ass, p, s, draftKey) {
+  const draft = state.ui.draftAnswers[draftKey]?.text ?? '';
+  return `
+    <div class="space-y-2">
+      <textarea data-action="free-input" data-key="${draftKey}" rows="3" placeholder="Type the problem exactly as it appears on your worksheet..."
+        class="w-full bg-bg border border-line rounded-xl p-3 text-[12.5px] text-ink focus:border-accent-500 transition no-scrollbar">${escapeHtml(draft)}</textarea>
+      <div class="flex items-center justify-between pt-1">
+        <span class="text-[10px] text-ink3">Just this one problem, word for word</span>
+        <button data-action="save-transcription" data-ass="${ass.id}" data-prob="${p.id}" data-step="${s.id}" class="px-4 py-2 rounded-lg grad-btn text-xs">Save Problem</button>
+      </div>
+    </div>
+  `;
+}
+
+function freeBlockHTML(ass, p, s, draftKey) {
+  const draft = state.ui.draftAnswers[draftKey]?.text ?? s.response ?? '';
+  const isLastStep = p.steps[p.steps.length - 1].id === s.id;
+  const hasKey = isLastStep && p.answerKey;
+  const revealKey = `reveal_${draftKey}`;
+  const revealed = !!state.ui.draftAnswers[revealKey];
+
+  if (hasKey && revealed) {
+    return `
+      <div class="space-y-2">
+        <textarea data-action="free-input" data-key="${draftKey}" rows="3" placeholder="Type your work or answer for this step..."
+          class="w-full bg-bg border border-line rounded-xl p-3 text-[12.5px] text-ink focus:border-accent-500 transition no-scrollbar">${escapeHtml(draft)}</textarea>
+        <div class="p-3 rounded-xl bg-bg border border-line text-[12px] space-y-1">
+          <div class="font-semibold text-ink flex items-center gap-1.5">${icon('checkCircle','w-3.5 h-3.5')} Answer key</div>
+          <div class="text-ink">${escapeHtml(p.answerKey)}</div>
+        </div>
+        <div class="flex items-center justify-between pt-1 gap-2">
+          <span class="text-[10px] text-ink3">Compare, then grade yourself</span>
+          <div class="flex items-center gap-2">
+            <button data-action="complete-free" data-grade="incorrect" data-ass="${ass.id}" data-prob="${p.id}" data-step="${s.id}" class="px-3 py-2 rounded-xl bg-bad/15 text-bad font-bold text-xs border border-bad/30">Missed it</button>
+            <button data-action="complete-free" data-grade="correct" data-ass="${ass.id}" data-prob="${p.id}" data-step="${s.id}" class="px-3 py-2 rounded-xl bg-good/15 text-good font-bold text-xs border border-good/30">Got it</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="space-y-2">
+      <textarea data-action="free-input" data-key="${draftKey}" rows="3" placeholder="Type your work or answer for this step..."
+        class="w-full bg-bg border border-line rounded-xl p-3 text-[12.5px] text-ink focus:border-accent-500 transition no-scrollbar">${escapeHtml(draft)}</textarea>
+      <div class="flex items-center justify-between pt-1">
+        <span class="text-[10px] text-ink3">${hasKey ? 'Answer key available' : 'Self-checked step'}</span>
+        ${hasKey
+          ? `<button data-action="reveal-answer-key" data-key="${revealKey}" class="px-4 py-2 rounded-lg grad-btn text-xs">Reveal Answer</button>`
+          : `<button data-action="complete-free" data-ass="${ass.id}" data-prob="${p.id}" data-step="${s.id}" class="px-4 py-2 rounded-lg grad-btn text-xs">Mark done</button>`}
+      </div>
+    </div>
+  `;
+}
+
+function studyCardHTML(deck, card, badgeText, sessionNav) {
+  const draftKey = `study_${deck.id}_${card.id}`;
+  const sel = state.ui.draftAnswers[draftKey];
+  const showResult = sel !== undefined && sel.checked;
+  const header = `
+      <div class="flex items-center justify-between border-b border-linesoft pb-2.5">
+        <div>
+          <span class="text-[9.5px] font-bold text-ink2 uppercase tracking-wide bg-surface2 px-1.5 py-0.5 rounded border border-line">${deck.exam}</span>
+          <h3 class="text-[11px] font-semibold text-ink2 mt-1">${escapeHtml(deck.title)}</h3>
+        </div>
+        <span class="text-[10px] font-mono text-ink3">${badgeText}</span>
+      </div>
+      <div class="text-[13.5px] text-ink font-medium math leading-snug">${card.q}</div>`;
+
+  if (card.kind === 'free') {
+    const draft = sel?.text ?? '';
+    return `
+      <div class="bg-surface border border-line rounded-xl p-4 space-y-4 enter" id="study-card">
+        ${header}
+        <textarea data-action="study-free-input" data-key="${draftKey}" rows="3" placeholder="Write your response..."
+          class="w-full bg-bg border border-line rounded-xl p-3 text-[12.5px] text-ink focus:border-accent-500 transition no-scrollbar">${escapeHtml(draft)}</textarea>
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-[10px] text-ink3">Self-reviewed</span>
+          <button data-action="${isCardDone(deck.id, card.id) ? sessionNav : 'study-free-done'}" data-deck="${deck.id}" data-card="${card.id}" class="px-4 py-2 rounded-lg grad-btn text-xs flex items-center gap-1.5">${isCardDone(deck.id, card.id) ? `Next ${icon('chevronRight','w-3.5 h-3.5')}` : 'Mark Reviewed'}</button>
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="bg-surface border border-line rounded-xl p-4 space-y-4 enter" id="study-card">
+      ${header}
+      <div class="space-y-2">
+        ${card.options.map((opt, idx) => {
+          let cls = '';
+          if (showResult) { if (idx === card.correctIndex) cls = 'correct'; else if (idx === sel.index) cls = 'wrong'; }
+          else if (sel && sel.index === idx) cls = 'selected';
+          return `
+            <button data-action="study-select" data-deck="${deck.id}" data-card="${card.id}" data-idx="${idx}"
+                    class="option-btn w-full p-3 rounded-xl border border-line bg-bg/60 text-left flex items-center gap-3 ${cls}">
+              <span class="bubble w-6 h-6 rounded-full border border-line flex items-center justify-center text-[11px] font-bold shrink-0">${String.fromCharCode(65 + idx)}</span>
+              <span class="text-[12.5px] text-ink math flex-1">${opt}</span>
+              ${showResult && idx === card.correctIndex ? icon('check', 'w-4 h-4 text-good shrink-0') : ''}
+              ${showResult && idx === sel.index && idx !== card.correctIndex ? icon('x', 'w-4 h-4 text-bad shrink-0') : ''}
+            </button>`;
+        }).join('')}
+      </div>
+      ${showResult ? `<div class="p-3 rounded-xl bg-bg border border-line text-[11.5px] text-ink2 space-y-1">
+        <div class="font-bold text-ink flex items-center gap-1.5">${icon('info','w-3.5 h-3.5 text-accent-500')} Explanation</div>
+        <div class="math">${card.explain}</div>
+      </div>` : ''}
+      <div class="flex items-center justify-between pt-1">
+        <span></span>
+        ${!showResult
+          ? `<button data-action="study-check" data-deck="${deck.id}" data-card="${card.id}" class="px-4 py-2 rounded-lg grad-btn text-xs">Check</button>`
+          : `<button data-action="${sessionNav}" data-deck="${deck.id}" data-card="${card.id}" class="px-4 py-2 rounded-lg grad-btn text-xs flex items-center gap-1.5">Next ${icon('chevronRight','w-3.5 h-3.5')}</button>`}
+      </div>
+    </div>
+  `;
+}
+
+/* ============================== TAB: FEED ============================== */
+function feedItemKey(item) {
+  return `hw_${item.assignmentId}_${item.problemId}_${item.stepId}`;
+}
+
+function skipFeedItem(key) {
+  if (!key) return;
+  if (!state.ui.feedSkipped) state.ui.feedSkipped = [];
+  if (!state.ui.feedSkipped.includes(key)) state.ui.feedSkipped.push(key);
+  state.ui.feedFocusKey = null;
+  const card = document.getElementById('step-card');
+  if (card) {
+    card.style.transition = 'transform .22s ease, opacity .22s ease';
+    card.style.transform = 'translateX(-120%) rotate(-8deg)';
+    card.style.opacity = '0';
+    setTimeout(render, 190);
+  } else {
+    render();
+  }
+}
+
+function attachSwipeHandlers() {
+  const card = document.getElementById('step-card');
+  if (!card || !card.dataset.feedKey) return;
+  let startX = 0, dragging = false, dx = 0;
+  const threshold = 90;
+  card.addEventListener('pointerdown', e => {
+    if (e.target.closest('button, textarea, input, select, a')) return;
+    dragging = true; startX = e.clientX; dx = 0;
+    card.style.transition = 'none';
+    try { card.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  card.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    dx = e.clientX - startX;
+    card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+    card.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 260));
+  });
+  const release = () => {
+    if (!dragging) return;
+    dragging = false;
+    card.style.transition = 'transform .22s ease, opacity .22s ease';
+    if (Math.abs(dx) > threshold) {
+      card.style.transform = `translateX(${dx > 0 ? 500 : -500}px) rotate(${dx / 10}deg)`;
+      card.style.opacity = '0';
+      const key = card.dataset.feedKey;
+      setTimeout(() => skipFeedItem(key), 180);
+    } else {
+      card.style.transform = ''; card.style.opacity = '';
+    }
+  };
+  card.addEventListener('pointerup', release);
+  card.addEventListener('pointercancel', release);
+  card.addEventListener('pointerleave', () => { if (dragging && dx === 0) release(); });
+}
+
+function pickCurrentFeedItem(queue) {
+  if (queue.length === 0) return null;
+  const focused = queue.find(q => feedItemKey(q) === state.ui.feedFocusKey);
+  if (focused) return focused;
+  const skipped = state.ui.feedSkipped || [];
+  return queue.find(q => !skipped.includes(feedItemKey(q))) || queue[0];
+}
+
+function renderFeedTab() {
+  const scope = state.ui.feedScope || 'mix';
+  const scopeId = scope === 'mix' ? undefined : scope;
+  const scopeValid = scope === 'mix' || getAssignment(scope);
+  if (!scopeValid) state.ui.feedScope = 'mix';
+  const effectiveScopeId = scopeValid ? scopeId : undefined;
+  const queue = buildFeedQueue(effectiveScopeId);
+
+  const selectorHtml = `
+    <div class="flex items-center gap-2">
+      <label class="text-[10px] font-bold text-ink2 uppercase tracking-wider shrink-0">Showing</label>
+      <select id="feed-scope-select" class="flex-1 min-w-0 bg-surface border border-line rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink">
+        <option value="mix" ${scope === 'mix' ? 'selected' : ''}>All assignments, by due date</option>
+        ${state.assignments.map(a => `<option value="${a.id}" ${scope === a.id ? 'selected' : ''}>${escapeHtml(a.title)}</option>`).join('')}
+      </select>
+    </div>`;
+
+  let bodyHtml = '';
+  let headerAss = null;
+  if (queue.length === 0) {
+    bodyHtml = `
+      <div class="p-8 text-center bg-surface border border-line rounded-xl space-y-3 enter">
+        ${mascotBadgeHTML('w-14 h-14')}
+        <h3 class="text-sm font-display font-bold text-ink">${state.assignments.length ? 'Nothing left here' : 'Nothing to do yet'}</h3>
+        <p class="text-xs text-ink2">${state.assignments.length ? (scope !== 'mix' ? 'Every step on this assignment is done.' : 'Every step across your assignments is done.') : 'Upload an assignment to start breaking it into small steps.'}</p>
+        <div class="flex items-center justify-center gap-2 pt-1">
+          <button data-action="goto-tab" data-tab="upload" class="px-3.5 py-2 rounded-lg grad-btn text-xs">Add assignment</button>
+        </div>
+      </div>`;
+    if (scope !== 'mix') headerAss = getAssignment(scope);
+  } else {
+    const item = pickCurrentFeedItem(queue);
+    const key = feedItemKey(item);
+    const ass = getAssignment(item.assignmentId), p = getProblem(ass, item.problemId), s = getStep(p, item.stepId);
+    bodyHtml = stepCardHTML(ass, p, s, `Step ${p.steps.findIndex(x=>x.id===s.id)+1} of ${p.steps.length}`, key);
+    headerAss = ass;
+  }
+
+  const ringR = 26, ringC = 2 * Math.PI * ringR;
+  let pct = 0, ringTitle = 'No assignments yet', ringSub = 'Upload one to get started';
+  if (headerAss) {
+    const stats = getAssignmentStats(headerAss);
+    pct = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
+    ringTitle = headerAss.title;
+    ringSub = `${stats.completed}/${stats.total} steps done`;
+  } else if (state.assignments.length) {
+    let totalC = 0, totalT = 0;
+    state.assignments.forEach(a => { const st = getAssignmentStats(a); totalC += st.completed; totalT += st.total; });
+    pct = totalT ? Math.round((totalC / totalT) * 100) : 100;
+    ringTitle = 'All assignments';
+    ringSub = `${totalC}/${totalT} steps done`;
+  }
+  const ringOffset = ringC - (pct / 100) * ringC;
+
+  return `
+    <div class="p-4 space-y-4">
+      ${selectorHtml}
+      <div class="p-4 rounded-xl bg-surface ornate-card flex items-center gap-3" style="border:1px solid rgba(255,255,255,0.18)">
+        <span class="bracket-bl"></span><span class="bracket-br"></span>
+        <div class="relative w-16 h-16 shrink-0">
+          <svg class="ring-chart w-16 h-16" viewBox="0 0 64 64">
+            <g stroke="rgba(255,255,255,0.18)" stroke-width="1">${ringTicksHTML(32, 32, 30.5, 28, 24)}</g>
+            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="5"/>
+            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="#cdb183" stroke-width="5" stroke-linecap="round"
+              stroke-dasharray="${ringC}" stroke-dashoffset="${ringOffset}"/>
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-[13px] font-mono font-bold text-ink">${pct}%</span>
+          </div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="text-[12.5px] font-bold text-ink truncate font-display">${escapeHtml(ringTitle)}</div>
+          <div class="text-[10px] text-ink2 font-semibold mt-0.5">${ringSub}</div>
+        </div>
+        <button data-action="goto-tab" data-tab="calendar" class="text-[10px] font-bold text-accent-500 flex items-center gap-1 shrink-0">Pace ${icon('chevronRight','w-3 h-3')}</button>
+      </div>
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+/* ============================== TAB: UPLOAD ============================== */
+let uploadedImageData = null;
+function defaultDueDate(daysFromNow) { return new Date(Date.now() + 86400000 * daysFromNow).toISOString().split('T')[0]; }
+function parseLines(raw) {
+  const lines = raw.split(/\n+/).map(l => l.trim()).filter(l => l.length > 2);
+  return (lines.length ? lines : [raw.trim() || 'Untitled problem']).map(l => l.replace(/^\d+[\.\)]\s*/, ''));
+}
+
+function renderUploadTab() {
+  if (state.ui.pendingUpload) return `<div class="p-4 space-y-4">${pendingUploadFormHTML()}</div>`;
+  return `
+    <div class="p-4 space-y-4">
+      ${sectionRuleHTML('New assignment', 'Upload a photo or PDF of any assignment, or paste the problems as text.')}
+
+      <div id="dropzone" data-action="open-file" class="border-2 border-dashed border-line hover:border-accent-500/50 bg-surface/60 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition">
+        <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx,.txt">
+        <div class="w-12 h-12 rounded-full bg-surface2 border border-line flex items-center justify-center text-ink2 mb-3">${icon('upload', 'w-6 h-6')}</div>
+        <p class="text-sm font-semibold text-ink">Tap to upload or drag &amp; drop</p>
+        <p class="text-[11px] text-ink3 mt-1">PDF, DOCX, TXT, JPG, PNG &middot; Max 10MB</p>
+      </div>
+
+      <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-ink">Or start from a sample</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button data-action="load-sample" class="p-2.5 rounded-xl bg-surface2 border border-line text-center">
+            ${icon('sigma','w-4 h-4 text-accent-500 mx-auto mb-1')}<div class="text-[10.5px] font-bold text-ink">Calculus</div><div class="text-[9px] text-ink3">6 problems</div>
+          </button>
+          <button data-action="load-bio-sample" class="p-2.5 rounded-xl bg-surface2 border border-line text-center">
+            ${icon('flask','w-4 h-4 text-accent-500 mx-auto mb-1')}<div class="text-[10.5px] font-bold text-ink">Biology</div><div class="text-[9px] text-ink3">2 questions</div>
+          </button>
+          <button data-action="load-essay-sample" class="p-2.5 rounded-xl bg-surface2 border border-line text-center">
+            ${icon('bookOpen','w-4 h-4 text-accent-500 mx-auto mb-1')}<div class="text-[10.5px] font-bold text-ink">Essay</div><div class="text-[9px] text-ink3">4 paragraphs</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-ink2">Paste problems</label>
+        <textarea id="raw-text-input" rows="4" class="w-full bg-surface border border-line rounded-xl p-3 text-xs text-ink focus:border-accent-500 transition no-scrollbar" placeholder="One problem per line">${escapeHtml(state.ui.draftText)}</textarea>
+        <button data-action="process-text" class="w-full py-2.5 rounded-lg grad-btn text-xs">Continue</button>
+      </div>
+    </div>
+  `;
+}
+
+function pendingUploadFormHTML() {
+  const pu = state.ui.pendingUpload;
+  return `
+    <div class="p-4 rounded-xl bg-surface border border-line space-y-3 enter">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-ink">Assignment details</span>
+        <button data-action="cancel-pending" class="text-ink3">${icon('x','w-4 h-4')}</button>
+      </div>
+      ${uploadedImageData ? `<div class="overflow-hidden rounded-xl border border-line bg-black flex justify-center max-h-40"><img src="${uploadedImageData}" class="object-contain w-full h-full"></div>` : ''}
+      <div class="space-y-2">
+        <div>
+          <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider">Title</label>
+          <input id="pu-title" type="text" value="${escapeHtml(pu.title)}" class="w-full bg-bg border border-line rounded-lg px-3 py-2 text-xs text-ink mt-1">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider">Subject</label>
+            <select id="pu-subject" class="w-full bg-bg border border-line rounded-lg px-2 py-2 text-xs text-ink mt-1">
+              ${SUBJECTS.map(s => `<option value="${s}" ${pu.subject === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider">Due date</label>
+            <input id="pu-due" type="date" value="${pu.dueDate}" class="w-full bg-bg border border-line rounded-lg px-2 py-2 text-xs text-ink mt-1">
+          </div>
+        </div>
+        ${pu.kind === 'generic' ? `
+        <div>
+          <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider">Number of problems / parts</label>
+          <input id="pu-count" type="number" min="1" value="${pu.count}" class="w-full bg-bg border border-line rounded-lg px-3 py-2 text-xs text-ink mt-1">
+        </div>
+        <p class="text-[10.5px] text-ink3 leading-relaxed">We couldn't read this file automatically, so each part starts with a quick step where you type the actual problem from your worksheet &mdash; then it's broken into work-it-out and double-check steps, just like the rest of the app. You can add more problems anytime, no limit.</p>
+        ` : `
+        <div>
+          <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider flex items-center gap-1.5">${pu.aiRead ? icon('sparkle', 'w-3 h-3 text-accent-500') : ''}${pu.aiRead ? 'Scanned from your file &mdash; review & edit' : 'Problems, one per line'}</label>
+          <textarea id="pu-lines-text" rows="6" class="w-full bg-bg border border-line rounded-lg px-3 py-2 text-[11.5px] text-ink mt-1 no-scrollbar">${escapeHtml(pu.lines.join('\n'))}</textarea>
+        </div>
+        <p class="text-[10.5px] text-ink3">${pu.lines.length} problem${pu.lines.length === 1 ? '' : 's'}${pu.aiRead ? ' read from your file' : ' found'} &mdash; review and edit before continuing.</p>
+        `}
+        <div>
+          <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider">Answer key (optional)</label>
+          <textarea id="pu-answerkey" rows="3" placeholder="Have the correct answers? Paste one per line, matching problem order, and we'll let you self-grade right/wrong instead of just marking done." class="w-full bg-bg border border-line rounded-lg px-3 py-2 text-[11.5px] text-ink mt-1 no-scrollbar">${escapeHtml(pu.answerKeyText || '')}</textarea>
+        </div>
+      </div>
+      <button data-action="confirm-pending" class="w-full py-2.5 rounded-lg grad-btn text-xs">Create steps</button>
+    </div>`;
+}
+
+function newGenericProblem(index) {
+  return {
+    id: 'p' + index, index, expr: '',
+    steps: [
+      { id: 's0', kind: 'transcribe', title: 'Add the problem', question: `Copy problem ${index} from your worksheet, word for word.` },
+      { id: 's1', kind: 'free', title: 'Work it out', question: 'Solve or draft your response here.' },
+      { id: 's2', kind: 'free', title: 'Double-check', question: 'Review your work, then mark this step complete.' },
+    ]
+  };
+}
+function genericProblems(count) {
+  const problems = [];
+  for (let i = 1; i <= count; i++) problems.push(newGenericProblem(i));
+  return problems;
+}
+
+function finalizeUpload() {
+  const pu = state.ui.pendingUpload;
+  if (!pu) return;
+  const keyLines = (pu.answerKeyText || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const problems = pu.kind === 'text'
+    ? pu.lines.map((line, idx) => ({
+        id: 'p' + (idx + 1), index: idx + 1, expr: escapeHtml(line),
+        steps: [{ id: 's1', kind: 'free', title: 'Work the problem', question: 'Show your work, then mark this step complete.' }]
+      }))
+    : genericProblems(pu.count);
+  problems.forEach((p, idx) => { if (keyLines[idx]) p.answerKey = keyLines[idx]; });
+  const newAss = { id: uid('doc'), title: (pu.title || 'Untitled Assignment').trim(), subject: pu.subject, dueDate: pu.dueDate, createdAt: new Date().toISOString(), problems };
+  state.assignments.unshift(newAss);
+  markActivity();
+  state.ui.pendingUpload = null; uploadedImageData = null; state.ui.draftText = '';
+  state.ui.workPlayer = null;
+  state.ui.tab = 'work'; state.ui.workView = 'detail'; state.ui.workAssignmentId = newAss.id;
+  switchTab('work');
+}
+
+function handleFileSelected(file) {
+  if (!file) return;
+  const titleGuess = file.name.replace(/\.[^.]+$/, '');
+  const isImage = file.type.startsWith('image/');
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = evt => { uploadedImageData = evt.target.result; };
+    reader.readAsDataURL(file);
+    attemptAIRead(file, titleGuess, false);
+  } else if (isPdf) {
+    attemptAIRead(file, titleGuess, true);
+  } else if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
+    const reader = new FileReader();
+    reader.onload = evt => {
+      state.ui.pendingUpload = { source: 'file', kind: 'text', title: titleGuess, subject: 'Other', dueDate: defaultDueDate(3), lines: parseLines(evt.target.result) };
+      render();
+    };
+    reader.readAsText(file);
+  } else {
+    fallbackToManualEntry(titleGuess, 'Other');
+  }
+}
+
+function fallbackToManualEntry(titleGuess, subject, aiFailed) {
+  state.ui.pendingUpload = { source: 'file', kind: 'generic', title: titleGuess, subject: subject || 'Math', dueDate: defaultDueDate(4), count: 5, aiFailed: !!aiFailed };
+  render();
+}
+
+function showReadingOverlay() {
+  const root = document.getElementById('overlay-root');
+  if (!root) return;
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-5">
+      <div class="bg-surface border border-line rounded-2xl p-6 w-full max-w-xs space-y-4 pop text-center">
+        <div class="w-12 h-12 rounded-full border-2 border-line flex items-center justify-center mx-auto relative">
+          <span class="w-12 h-12 rounded-full border-2 border-transparent absolute inset-0 animate-spin" style="border-top-color:#cdb183"></span>
+          ${icon('sparkle', 'w-5 h-5 text-accent-500')}
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-ink">Reading your file&hellip;</h3>
+          <p class="text-[11px] text-ink2 mt-1">This can take a moment, and may ask you to allow it once.</p>
+        </div>
+      </div>
+    </div>`;
+}
+function hideReadingOverlay() {
+  const root = document.getElementById('overlay-root');
+  if (root) root.innerHTML = '';
+}
+
+function ensurePdfWorker() {
+  if (window.pdfjsLib && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+}
+
+async function renderPdfPagesToBlobs(file, maxPages) {
+  if (!window.pdfjsLib) throw new Error('pdf.js not available');
+  ensurePdfWorker();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const numPages = Math.min(pdf.numPages, maxPages);
+  const blobs = [];
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.6 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (blob) blobs.push(blob);
+  }
+  return blobs;
+}
+
+// Pulls the real embedded text layer out of a PDF (no OCR needed) and reassembles
+// rough line breaks by watching for jumps in each text run's baseline Y position.
+async function extractPdfText(file, maxPages) {
+  if (!window.pdfjsLib) throw new Error('pdf.js not available');
+  ensurePdfWorker();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const numPages = Math.min(pdf.numPages, maxPages);
+  let out = '';
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    let lines = [], cur = [], lastY = null;
+    content.items.forEach(item => {
+      const y = item.transform[5];
+      if (lastY !== null && Math.abs(y - lastY) > 2.5) { lines.push(cur.join(' ')); cur = []; }
+      cur.push(item.str);
+      lastY = y;
+    });
+    if (cur.length) lines.push(cur.join(' '));
+    out += lines.join('\n') + '\n';
+  }
+  return out;
+}
+
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      if (window.Tesseract) { resolve(); return; }
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('failed to load ' + src)));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// Client-side OCR via Tesseract.js  -  runs entirely in the browser, no server or API key needed.
+async function extractTextFromImage(file) {
+  if (!window.Tesseract) {
+    await loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js');
+  }
+  const result = await window.Tesseract.recognize(file, 'eng');
+  return (result && result.data && result.data.text) || '';
+}
+
+// Reads a worksheet file into a list of problem lines. If this page is running inside
+// a Claude Artifact with image-sampling granted, that AI reader is tried first since it
+// understands problem boundaries semantically. Everywhere else (a plain saved HTML file,
+// any regular browser) it falls back to real local extraction: pdf.js's text layer for
+// PDFs, and in-browser OCR (Tesseract.js) for photos/scans  -  fully offline-capable logic,
+// no account or API key required.
+async function attemptAIRead(file, titleGuess, isPdf) {
+  showReadingOverlay();
+
+  let sample = null;
+  try { sample = window.claude ? await window.claude.use('sample') : null; } catch (e) {}
+  if (sample) {
+    let caps = null;
+    try { caps = await sample.limits(); } catch (e) {}
+    if (caps && caps.images) {
+      try {
+        const imageBlobs = isPdf ? await renderPdfPagesToBlobs(file, Math.max(1, Math.min(caps.images.maxCount, 5))) : [file];
+        if (imageBlobs && imageBlobs.length) {
+          const data = await sample.json(
+            'This image shows a student worksheet or homework page (there may be several pages, given in order). ' +
+            'Read every distinct problem or question exactly as written on it, including numbers, labels, and instructions, one per array item, in the order they appear. ' +
+            'Skip headers, names, and page furniture that are not actual problems. ' +
+            'Reply with ONLY a JSON array of strings, nothing else. Example: ["1) Solve for x: 2x + 5 = 17", "2) Simplify (x+3)(x-3)"]. If you cannot find any readable problems, reply with [].',
+            { images: imageBlobs, modelTier: 'default', cache: false }
+          );
+          const lines = Array.isArray(data) ? data.map(x => String(x).trim()).filter(Boolean) : [];
+          if (lines.length) {
+            hideReadingOverlay();
+            state.ui.pendingUpload = { source: 'file', kind: 'text', title: titleGuess, subject: 'Other', dueDate: defaultDueDate(4), lines, aiRead: true };
+            render();
+            return;
+          }
+        }
+      } catch (e) { /* fall through to local extraction below */ }
+    }
+  }
+
+  try {
+    const rawText = isPdf ? await extractPdfText(file, 8) : await extractTextFromImage(file);
+    hideReadingOverlay();
+    const lines = parseLines(rawText || '');
+    if (!rawText || !rawText.trim() || lines.length === 0) {
+      fallbackToManualEntry(titleGuess, isPdf ? 'Other' : 'Math', true);
+      toast("Couldn't find readable text in that file  -  fill it in manually.");
+      return;
+    }
+    state.ui.pendingUpload = { source: 'file', kind: 'text', title: titleGuess, subject: 'Other', dueDate: defaultDueDate(4), lines, aiRead: true };
+    render();
+  } catch (e) {
+    hideReadingOverlay();
+    fallbackToManualEntry(titleGuess, isPdf ? 'Other' : 'Math', true);
+    toast("Couldn't read that automatically  -  fill it in manually.");
+  }
+}
+
+function cancelPendingUpload() {
+  state.ui.pendingUpload = null; uploadedImageData = null;
+  const input = document.getElementById('file-input'); if (input) input.value = '';
+}
+
+function runProcessing(onDone) {
+  const steps = ['Reading file', 'Identifying problems', 'Creating step-by-step plan', 'Finalizing'];
+  let i = 0;
+  const root = document.getElementById('overlay-root');
+  function paint(pct) {
+    root.innerHTML = `
+      <div class="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-5">
+        <div class="bg-surface border border-line rounded-2xl p-6 w-full max-w-xs space-y-5 pop">
+          <div class="w-14 h-14 rounded-full border-2 border-line flex items-center justify-center mx-auto relative">
+            <svg class="ring-chart w-14 h-14 absolute" viewBox="0 0 56 56">
+                            <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="4"/>
+              <circle cx="28" cy="28" r="24" fill="none" stroke="#cdb183" stroke-width="4" stroke-linecap="round"
+                stroke-dasharray="${2*Math.PI*24}" stroke-dashoffset="${2*Math.PI*24*(1-pct/100)}"/>
+            </svg>
+            ${icon('fileText','w-5 h-5 text-accent-500')}
+          </div>
+          <div class="text-center">
+            <h3 class="text-sm font-semibold text-ink">Processing&hellip;</h3>
+            <p class="text-[11px] text-ink2 mt-0.5">Splitting problems into steps.</p>
+          </div>
+          <div class="w-full h-1.5 bg-surface2 rounded-full overflow-hidden"><div class="h-full bg-accent-500 transition-all duration-200" style="width:${pct}%"></div></div>
+          <div class="space-y-2">
+            ${steps.map((label, idx) => {
+              const done = idx < Math.floor((pct/100) * steps.length);
+              const active = idx === Math.floor((pct/100) * steps.length) && !done;
+              return `<div class="flex items-center gap-2 text-xs ${done ? 'text-ink' : active ? 'text-accent-400' : 'text-ink3'}">
+                ${done ? icon('checkCircle','w-4 h-4 text-good') : active ? '<span class="w-4 h-4 rounded-full border-2 border-accent-500 border-t-transparent animate-spin inline-block"></span>' : '<span class="w-4 h-4 rounded-full border border-line inline-block"></span>'}
+                ${label}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>`;
+  }
+  paint(0);
+  const interval = setInterval(() => {
+    i += 8 + Math.random() * 10;
+    if (i >= 100) { i = 100; paint(100); clearInterval(interval); setTimeout(() => { root.innerHTML = ''; onDone(); }, 350); }
+    else paint(i);
+  }, 140);
+}
+
+/* ============================== TAB: WORK ============================== */
+function renderWorkTab() {
+  const ui = state.ui;
+  if (ui.workPlayer && !workPlayerTargetExists(ui.workPlayer)) ui.workPlayer = null;
+  if (ui.workPlayer) return renderWorkPlayer();
+  if (ui.workView === 'detail' && ui.workAssignmentId) {
+    const ass = getAssignment(ui.workAssignmentId);
+    if (!ass) { ui.workView = 'list'; ui.workAssignmentId = null; return renderAssignmentList(); }
+    return renderAssignmentDetail(ass);
+  }
+  return renderAssignmentList();
+}
+// Guards against a stale workPlayer pointer (e.g. its assignment/problem/step was deleted elsewhere).
+function workPlayerTargetExists(wp) {
+  const ass = getAssignment(wp.assignmentId);
+  if (!ass) return false;
+  const p = getProblem(ass, wp.problemId);
+  if (!p) return false;
+  return !!getStep(p, wp.stepId);
+}
+
+function renderAssignmentList() {
+  if (state.assignments.length === 0) {
+    return `<div class="p-4"><div class="p-8 text-center bg-surface border border-line rounded-xl space-y-2 enter">
+      <p class="text-xs text-ink2">No assignments yet.</p>
+      <button data-action="goto-tab" data-tab="upload" class="text-xs font-bold text-accent-500">Import homework</button>
+    </div></div>`;
+  }
+  const cards = state.assignments.map(ass => {
+    if (state.ui.confirmDeleteId === ass.id) {
+      return `
+      <div class="p-4 rounded-xl bg-surface border border-bad/40 space-y-3 enter">
+        <div class="text-xs text-ink"><span class="font-bold">Remove "${escapeHtml(ass.title)}"?</span> <span class="text-ink2">This can't be undone.</span></div>
+        <div class="flex items-center gap-2">
+          <button data-action="cancel-delete-assignment" class="flex-1 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Cancel</button>
+          <button data-action="confirm-delete-assignment" data-ass="${ass.id}" class="flex-1 py-2 rounded-xl bg-bad text-white text-xs font-bold">Remove</button>
+        </div>
+      </div>`;
+    }
+    const stats = getAssignmentStats(ass);
+    const pct = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
+    const done = pct === 100;
+    const daysLeft = daysUntil(ass.dueDate);
+    return `
+      <div data-action="open-assignment" data-ass="${ass.id}" class="p-4 rounded-xl bg-surface border border-line space-y-3 cursor-pointer enter">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0 flex items-start gap-2.5">
+            ${subjectChipHTML(ass.subject)}
+            <div class="min-w-0">
+              <span class="text-[9.5px] font-bold px-2 py-0.5 rounded border ${done ? 'text-good bg-good/10 border-good/25' : 'text-ink2 bg-surface2 border-line'}">${done ? 'Completed' : 'In Progress'}</span>
+              <h3 class="text-[13px] font-bold text-ink mt-1 truncate">${escapeHtml(ass.title)}</h3>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="text-xs font-mono text-ink2">${pct}%</span>
+            <button data-action="ask-delete-assignment" data-ass="${ass.id}" class="text-ink3 hover:text-bad p-0.5">${icon('trash','w-3.5 h-3.5')}</button>
+          </div>
+        </div>
+        <div class="w-full h-1.5 bg-surface2 rounded-full overflow-hidden"><div class="h-full ${done ? 'bg-good' : 'bg-accent-500'}" style="width:${pct}%"></div></div>
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="text-ink2">${stats.completed}/${stats.total} steps &middot; due ${fmtDate(ass.dueDate)} (${daysLeft}d)</span>
+          <button data-action="export-assignment" data-ass="${ass.id}" class="text-accent-500 font-bold flex items-center gap-1">${icon('fileText','w-3.5 h-3.5')} Export</button>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="p-4 space-y-4">
+    ${sectionRuleHTML('Assignments', 'Track progress and export your submission.')}
+    <div class="space-y-3">${cards}</div>
+  </div>`;
+}
+
+function renderAssignmentDetail(ass) {
+  const stats = getAssignmentStats(ass);
+  const pct = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
+  const daysLeft = daysUntil(ass.dueDate);
+  const pace = stats.remaining > 0 ? Math.ceil(stats.remaining / daysLeft) : 0;
+  let currentAssigned = false;
+  const rows = ass.problems.map(p => {
+    const t = p.steps.length, c = p.steps.filter(s => s.completed).length;
+    const done = c === t;
+    const isCurrent = !done && !currentAssigned;
+    if (isCurrent) currentAssigned = true;
+    const nodeClass = done ? 'done' : isCurrent ? 'current' : 'upcoming';
+    const nodeInner = done ? icon('check', 'w-4 h-4') : isCurrent ? `<span class="ring2"></span><span class="relative z-10">${p.index}</span>` : p.index;
+    return `
+      <div class="flex items-start gap-3">
+        <div class="stepper-node ${nodeClass} shrink-0">${nodeInner}</div>
+        <button data-action="open-problem" data-ass="${ass.id}" data-prob="${p.id}" class="flex-1 min-w-0 p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between text-left">
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-ink truncate math">${p.expr && p.expr.trim() ? p.expr : `<span class="text-ink3 italic font-normal">Problem ${p.index}: tap to add</span>`}</div>
+            <div class="text-[10.5px] text-ink3 mt-0.5">${c}/${t} steps</div>
+          </div>
+          ${icon('chevronRight', 'w-4 h-4 text-ink3 shrink-0')}
+        </button>
+      </div>`;
+  }).join('');
+  return `<div class="p-4 space-y-4">
+    <div class="flex items-center justify-between">
+      <button data-action="back-to-list" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} Assignments</button>
+      <button data-action="ask-delete-assignment" data-ass="${ass.id}" class="text-ink3 hover:text-bad p-0.5">${icon('trash','w-3.5 h-3.5')}</button>
+    </div>
+    ${state.ui.confirmDeleteId === ass.id ? `
+    <div class="p-4 rounded-xl bg-surface border border-bad/40 space-y-3 enter">
+      <div class="text-xs text-ink"><span class="font-bold">Remove "${escapeHtml(ass.title)}"?</span> <span class="text-ink2">This can't be undone.</span></div>
+      <div class="flex items-center gap-2">
+        <button data-action="cancel-delete-assignment" class="flex-1 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Cancel</button>
+        <button data-action="confirm-delete-assignment" data-ass="${ass.id}" class="flex-1 py-2 rounded-xl bg-bad text-white text-xs font-bold">Remove</button>
+      </div>
+    </div>` : ''}
+    <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-start gap-2.5 min-w-0">
+          ${subjectChipHTML(ass.subject, 'lg')}
+          <div class="min-w-0"><span class="text-[9.5px] font-bold text-accent-500 uppercase tracking-wide">${escapeHtml(ass.subject||'Homework')}</span>
+            <h2 class="text-base font-display font-semibold text-ink tracking-tight leading-tight mt-0.5">${escapeHtml(ass.title)}</h2></div>
+        </div>
+        <span class="text-sm font-mono text-ink2 shrink-0">${pct}%</span>
+      </div>
+      <div class="w-full h-2 bg-surface2 rounded-full overflow-hidden"><div class="h-full bg-accent-500" style="width:${pct}%"></div></div>
+      <div class="flex items-center justify-between text-[11px] text-ink2">
+        <span>${stats.completed}/${stats.total} steps done</span>
+        <span class="flex items-center gap-1">${icon('clock','w-3.5 h-3.5')} due ${fmtDate(ass.dueDate)}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-[10.5px] text-ink3 font-semibold">Due date</label>
+        <input type="date" data-action="set-duedate" data-ass="${ass.id}" value="${ass.dueDate}" class="bg-bg border border-line rounded-lg px-2 py-1 text-[11px] text-ink">
+        ${pace > 0 ? `<span class="text-[10.5px] text-accent-400 font-semibold ml-auto">~${pace}/day to finish</span>` : ''}
+      </div>
+    </div>
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-bold text-ink2 uppercase tracking-wider">Problems</h3>
+        <button data-action="export-assignment" data-ass="${ass.id}" class="text-[11px] font-bold text-accent-500 flex items-center gap-1">${icon('fileText','w-3.5 h-3.5')} Export</button>
+      </div>
+      <div class="stepper space-y-3">
+        <div class="stepper-line"></div>
+        ${rows}
+      </div>
+      <button data-action="add-problem" data-ass="${ass.id}" class="w-full py-2.5 rounded-xl border border-dashed border-line text-ink2 text-xs font-bold flex items-center justify-center gap-1.5 ml-[46px]" style="width:calc(100% - 46px)">${icon('plus','w-3.5 h-3.5')} Add Problem</button>
+    </div>
+    ${stats.remaining > 0 ? `<button data-action="start-sprint" data-ass="${ass.id}" class="w-full py-3 rounded-lg grad-btn text-sm">Start working</button>` : ''}
+  </div>`;
+}
+
+function renderWorkPlayer() {
+  const { assignmentId, problemId, stepId } = state.ui.workPlayer;
+  const ass = getAssignment(assignmentId), p = getProblem(ass, problemId), s = getStep(p, stepId);
+  return `<div class="p-4 space-y-3">
+    <button data-action="back-to-detail" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} ${escapeHtml(ass.title)}</button>
+    ${stepCardHTML(ass, p, s, `Problem ${p.index} of ${ass.problems.length}`)}
+  </div>`;
+}
+
+/* ============================== COMPLETION LOGIC ============================== */
+function completeHomeworkStep(assId, probId, stepId, selectedIndex) {
+  const ass = getAssignment(assId), p = getProblem(ass, probId), s = getStep(p, stepId);
+  s.completed = true; s.completedAt = todayStr(); if (selectedIndex !== undefined) s.selectedIndex = selectedIndex;
+  markActivity(); saveState();
+  if (s.selfGrade !== 'incorrect') burstConfetti();
+  if (isProblemComplete(p)) { showProblemCompleteOverlay(ass, p); return { problemComplete: true }; }
+  return { problemComplete: false };
+}
+
+function advanceWorkPlayerIfNeeded(assId) {
+  if (!state.ui.workPlayer || state.ui.workPlayer.assignmentId !== assId) return;
+  const ass = getAssignment(assId);
+  const next = findNextStepInAssignment(ass, null);
+  if (next) state.ui.workPlayer = { assignmentId: ass.id, problemId: next.problemId, stepId: next.stepId };
+}
+
+function showProblemCompleteOverlay(ass, p) {
+  const assignmentDone = isAssignmentComplete(ass);
+  const anyIncorrect = p.steps.some(s => s.selfGrade === 'incorrect');
+  const root = document.getElementById('overlay-root');
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-5">
+      <div class="bg-surface border border-line rounded-2xl p-5 max-w-xs w-full space-y-4 pop">
+        <div class="w-12 h-12 rounded-full ${anyIncorrect ? 'bg-surface2 border-line text-ink2' : 'bg-good/10 border-good/25 text-good'} border flex items-center justify-center mx-auto">${icon('checkCircle','w-6 h-6')}</div>
+        <div class="text-center space-y-1">
+          <h3 class="text-base font-display font-semibold text-ink tracking-tight">${assignmentDone ? 'Assignment complete' : anyIncorrect ? `Problem ${p.index} reviewed` : `Problem ${p.index} complete`}</h3>
+          <p class="text-xs text-ink2">${assignmentDone ? 'Every problem in this set is done.' : 'Summary of your steps.'}</p>
+        </div>
+        <div class="p-3 rounded-xl bg-bg border border-line text-center">
+          <div class="text-[9.5px] text-ink3 uppercase font-bold tracking-wider mb-1">Original Problem</div>
+          <div class="text-sm text-ink math">${p.expr}</div>
+        </div>
+        <div class="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar pr-1">
+          ${p.steps.map(s => `<div class="p-2.5 rounded-lg bg-bg border border-line text-[11px] space-y-0.5">
+            <div class="font-bold text-ink2 flex items-center gap-1.5">${escapeHtml(s.title)}${s.selfGrade === 'correct' ? icon('check','w-3 h-3 text-good') : s.selfGrade === 'incorrect' ? icon('x','w-3 h-3 text-bad') : ''}</div>
+            <div class="text-ink math">${s.kind === 'mcq' ? s.options[s.selectedIndex] : escapeHtml(s.response || 'Marked done')}</div>
+          </div>`).join('')}
+        </div>
+        ${assignmentDone
+          ? `<button data-action="close-overlay-export" data-ass="${ass.id}" class="w-full py-2.5 rounded-lg grad-btn text-xs">View submission</button>`
+          : `<button data-action="close-overlay-continue" class="w-full py-2.5 rounded-lg grad-btn text-xs">Continue</button>`}
+      </div>
+    </div>`;
+}
+
+function completeStudyCard(deckId, cardId, selectedIndex) {
+  if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
+  const correct = STUDY_DECKS.find(d=>d.id===deckId).cards.find(c=>c.id===cardId).correctIndex === selectedIndex;
+  state.studyProgress[deckId][cardId] = { selectedIndex, correct, completedAt: todayStr() };
+  markActivity(); saveState();
+  if (correct) burstConfetti();
+}
+function completeFreeStudyCard(deckId, cardId, text) {
+  if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
+  state.studyProgress[deckId][cardId] = { response: text, completedAt: todayStr() };
+  markActivity(); saveState();
+  burstConfetti();
+}
+
+/* ============================== TAB: STUDY ============================== */
+function renderStudyTab() {
+  const ui = state.ui;
+  if (ui.studyDeckId) return renderStudySession();
+  if (ui.studyExam) return renderDeckList(ui.studyExam);
+  return renderExamGrid();
+}
+
+function examProgress(examKey) {
+  const decks = STUDY_DECKS.filter(d => d.exam === examKey);
+  let total = 0, done = 0;
+  decks.forEach(d => d.cards.forEach(c => { total++; if (isCardDone(d.id, c.id)) done++; }));
+  return { total, done, decks: decks.length };
+}
+
+function renderExamGrid() {
+  const cards = EXAMS.map(ex => {
+    const prog = examProgress(ex.key);
+    const pct = prog.total ? Math.round((prog.done / prog.total) * 100) : 0;
+    return `
+      <button data-action="open-exam" data-exam="${ex.key}" class="p-4 rounded-xl bg-surface border border-line text-left space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="w-9 h-9 rounded-xl bg-surface2 border border-line text-ink2 flex items-center justify-center font-mono font-medium text-[10px]">${ex.key}</span>
+          <span class="text-[10px] font-mono text-ink3">${pct}%</span>
+        </div>
+        <div><h3 class="text-sm font-bold text-ink font-display">${ex.label}</h3><p class="text-[10.5px] text-ink2">${ex.blurb}</p></div>
+        <div class="w-full h-1 bg-surface2 rounded-full overflow-hidden"><div class="h-full bg-accent-500" style="width:${pct}%"></div></div>
+      </button>`;
+  }).join('');
+  const doneToday = countStudyDoneToday();
+  return `<div class="p-4 space-y-4">
+    ${sectionRuleHTML('Test Prep', 'Practice sets for standardized tests, kept separate from your homework.')}
+    <div class="grid grid-cols-2 gap-3">${cards}</div>
+    ${doneToday > 0 ? `<div class="p-3 rounded-xl bg-surface border border-line flex items-center gap-2 text-xs text-ink2"><span class="text-accent-500 font-bold font-mono">${doneToday}</span> card${doneToday===1?'':'s'} reviewed today</div>` : ''}
+  </div>`;
+}
+
+function renderDeckList(examKey) {
+  const decks = STUDY_DECKS.filter(d => d.exam === examKey);
+  const rows = decks.map(d => {
+    const total = d.cards.length, done = d.cards.filter(c => isCardDone(d.id, c.id)).length;
+    const correct = d.cards.filter(c => state.studyProgress[d.id]?.[c.id]?.correct).length;
+    return `
+      <button data-action="start-deck" data-deck="${d.id}" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between text-left">
+        <div><div class="text-xs font-bold text-ink">${escapeHtml(d.title)}</div>
+          <div class="text-[10.5px] text-ink3">${done}/${total} reviewed${done ? ` &middot; ${correct}/${done} correct` : ''}</div></div>
+        ${icon('chevronRight','w-4 h-4 text-ink3')}
+      </button>`;
+  }).join('');
+  return `<div class="p-4 space-y-4">
+    <button data-action="back-to-exams" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} Study</button>
+    <h2 class="text-[17px] font-display font-semibold text-ink tracking-tight">${examKey}</h2>
+    <div class="space-y-2">${rows}</div>
+  </div>`;
+}
+
+function renderStudySession() {
+  const deck = getDeck(state.ui.studyDeckId);
+  const idx = state.ui.studyCardIndex;
+  if (idx >= deck.cards.length) return renderStudySummary(deck);
+  const card = deck.cards[idx];
+  return `<div class="p-4 space-y-3">
+    <button data-action="exit-deck" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} ${deck.exam} &middot; ${escapeHtml(deck.title)}</button>
+    ${studyCardHTML(deck, card, `Card ${idx+1} of ${deck.cards.length}`, 'study-session-next')}
+  </div>`;
+}
+
+function renderStudySummary(deck) {
+  const results = deck.cards.map(c => state.studyProgress[deck.id]?.[c.id]);
+  const correct = results.filter(r => r && r.correct).length;
+  return `<div class="p-4 space-y-4">
+    <div class="p-8 text-center bg-surface border border-line rounded-xl space-y-3 enter">
+      ${mascotBadgeHTML('w-14 h-14')}
+      <h3 class="text-base font-display font-semibold text-ink tracking-tight">Deck complete</h3>
+      <p class="text-3xl font-display font-semibold text-ink">${correct}<span class="text-ink3 text-lg">/${deck.cards.length}</span></p>
+      <p class="text-xs text-ink2">correct on ${escapeHtml(deck.title)}</p>
+      <div class="flex items-center justify-center gap-2 pt-1">
+        <button data-action="exit-deck" class="px-3.5 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Back to ${deck.exam}</button>
+        <button data-action="retry-deck" data-deck="${deck.id}" class="px-3.5 py-2 rounded-lg grad-btn text-xs">Review again</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================== TAB: CALENDAR ============================== */
+function renderCalendarTab() {
+  const today = new Date();
+  const dayLabels = ['S','M','T','W','T','F','S'];
+  let grid = dayLabels.map(d => `<div class="text-center text-[9.5px] font-bold text-ink3 pb-1">${d}</div>`).join('');
+
+  const dueMap = {};
+  state.assignments.forEach(a => { dueMap[a.dueDate] = (dueMap[a.dueDate] || []).concat(a); });
+
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(); d.setDate(today.getDate() + i);
+    const iso = d.toISOString().split('T')[0];
+    const isToday = i === 0;
+    const dueHere = dueMap[iso];
+    grid += `
+      <div class="aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold border relative ${isToday ? 'bg-ink text-bg border-ink' : 'bg-surface border-line text-ink2'}">
+        <span>${d.getDate()}</span>
+        ${dueHere ? `<span class="absolute bottom-1 w-1.5 h-1.5 rounded-full ${isToday ? 'bg-black' : 'bg-accent-500'}"></span>` : ''}
+      </div>`;
+  }
+
+  const upcoming = [...state.assignments].sort((a,b)=> new Date(a.dueDate)-new Date(b.dueDate)).map(a => {
+    const stats = getAssignmentStats(a);
+    const daysLeft = daysUntil(a.dueDate);
+    const pace = stats.remaining > 0 ? Math.ceil(stats.remaining / daysLeft) : 0;
+    const done = stats.remaining === 0;
+    return `<div class="p-3 rounded-xl bg-surface border border-line flex items-center justify-between text-xs gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        ${subjectChipHTML(a.subject, 'sm')}
+        <div class="min-w-0"><div class="font-bold text-ink truncate">${escapeHtml(a.title)}</div><div class="text-[10.5px] text-ink3">Due ${fmtDate(a.dueDate)} &middot; ${daysLeft}d left</div></div>
+      </div>
+      <span class="text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 ${done ? 'text-good bg-good/10 border-good/25' : 'text-ink2 bg-surface2 border-line'}">${done ? 'Done' : pace + '/day'}</span>
+    </div>`;
+  }).join('') || `<div class="text-xs text-ink3">No scheduled assignments.</div>`;
+
+  return `<div class="p-4 space-y-4">
+    ${sectionRuleHTML('Schedule', 'Remaining steps are spread evenly across the days before each due date.')}
+    <div class="grid grid-cols-7 gap-1.5 p-3 rounded-xl bg-surface border border-line">${grid}</div>
+    <div class="space-y-2"><h3 class="text-xs font-bold text-ink2 uppercase tracking-wider">Upcoming</h3><div class="space-y-2">${upcoming}</div></div>
+  </div>`;
+}
+
+/* ============================== EXPORT / SUBMISSION SHEET ============================== */
+function openExportSheet(assId) {
+  const ass = getAssignment(assId);
+  const root = document.getElementById('overlay-root');
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-black z-50 flex flex-col">
+      <div class="app-header p-4 border-b border-line flex items-center justify-between bg-bg shrink-0">
+        <div><h3 class="text-sm font-bold text-ink">Submission Sheet</h3><p class="text-[10.5px] text-ink2">${escapeHtml(ass.title)}</p></div>
+        <div class="flex items-center gap-2">
+          <button data-action="copy-sheet" data-ass="${ass.id}" class="px-3 py-1.5 rounded-lg bg-surface2 border border-line text-ink text-xs font-bold flex items-center gap-1.5">${icon('copy','w-3.5 h-3.5')} Copy</button>
+          <button data-action="close-export" class="p-1.5 rounded-lg bg-surface2 border border-line text-ink2">${icon('x','w-4 h-4')}</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto no-scrollbar p-4" style="font-family: Georgia, 'Times New Roman', serif;">
+        <div class="max-w-xl mx-auto space-y-6 bg-surface p-5 border border-line rounded-xl text-ink">
+          <div class="border-b border-line pb-4 flex justify-between items-end">
+            <div><h1 class="text-lg font-bold text-ink">${escapeHtml(ass.title)}</h1><p class="text-xs text-ink2">${escapeHtml(ass.subject || 'Assignment')}</p></div>
+            <div class="text-right text-[11px] text-ink2"><div>${new Date().toLocaleDateString()}</div><div class="text-accent-500 font-bold">Piecewise</div></div>
+          </div>
+          <div class="space-y-5">
+            ${ass.problems.map((p, pIdx) => `
+              <div class="space-y-1.5 border-b border-linesoft pb-4">
+                <div class="text-xs font-bold text-ink flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-surface2 flex items-center justify-center text-[10px] font-mono shrink-0">${pIdx + 1}</span>
+                  <span class="math">${p.expr && p.expr.trim() ? p.expr : `Problem ${pIdx + 1} (not added yet)`}</span>
+                </div>
+                <div class="pl-7 space-y-1 text-xs">
+                  ${p.steps.map(s => `<div class="text-ink2 flex items-center gap-1"><span class="text-ink3">${escapeHtml(s.title)}:</span> <span class="text-ink math">${s.completed ? (s.kind==='mcq' ? s.options[s.selectedIndex] : escapeHtml(s.response||'Done')) : 'Unanswered'}</span>${s.selfGrade === 'correct' ? icon('check','w-3 h-3 text-good') : s.selfGrade === 'incorrect' ? icon('x','w-3 h-3 text-bad') : ''}</div>`).join('')}
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildSheetText(ass) {
+  let out = `${ass.title}\n${ass.subject || 'Assignment'}  -  ${new Date().toLocaleDateString()}\n\n`;
+  ass.problems.forEach((p, i) => {
+    const exprText = p.expr && p.expr.trim() ? p.expr.replace(/<[^>]+>/g,'') : `Problem ${i+1} (not added yet)`;
+    out += `${i+1}. ${exprText}\n`;
+    p.steps.forEach(s => {
+      const ans = s.completed ? (s.kind==='mcq' ? s.options[s.selectedIndex].replace(/<[^>]+>/g,'') : (s.response||'Done')) : 'Unanswered';
+      const grade = s.selfGrade === 'correct' ? ' [correct]' : s.selfGrade === 'incorrect' ? ' [missed]' : '';
+      out += `   ${s.title}: ${ans}${grade}\n`;
+    });
+    out += '\n';
+  });
+  return out;
+}
+
+/* ============================== EVENT DELEGATION ============================== */
+function bindDynamicHandlers() {
+  const input = document.getElementById('file-input');
+  if (input) input.onchange = e => handleFileSelected(e.target.files[0]);
+  const dz = document.getElementById('dropzone');
+  if (dz) dz.addEventListener('click', () => document.getElementById('file-input').click());
+  const raw = document.getElementById('raw-text-input');
+  if (raw) raw.oninput = () => { state.ui.draftText = raw.value; };
+  const scopeSel = document.getElementById('feed-scope-select');
+  if (scopeSel) scopeSel.onchange = () => { state.ui.feedScope = scopeSel.value; state.ui.feedFocusKey = null; render(); };
+  attachSwipeHandlers();
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const a = t.dataset.action;
+
+  if (a === 'goto-tab') switchTab(t.dataset.tab);
+  else if (a === 'cancel-pending') { cancelPendingUpload(); render(); }
+  else if (a === 'skip-feed-item') { skipFeedItem(t.dataset.key); }
+  else if (a === 'confirm-pending') {
+    if (state.ui.pendingUpload && state.ui.pendingUpload.aiRead) finalizeUpload();
+    else runProcessing(finalizeUpload);
+  }
+  else if (a === 'load-sample') {
+    const idx = state.assignments.findIndex(a2 => a2.id === CALC_SAMPLE.id);
+    if (idx !== -1) state.assignments.splice(idx, 1);
+    state.assignments.unshift(JSON.parse(JSON.stringify(CALC_SAMPLE)));
+    markActivity(); switchTab('feed');
+  }
+  else if (a === 'load-bio-sample') {
+    const idx = state.assignments.findIndex(a2 => a2.id === BIO_SAMPLE.id);
+    if (idx !== -1) state.assignments.splice(idx, 1);
+    state.assignments.unshift(JSON.parse(JSON.stringify(BIO_SAMPLE)));
+    markActivity(); switchTab('feed');
+  }
+  else if (a === 'load-essay-sample') {
+    const idx = state.assignments.findIndex(a2 => a2.id === ESSAY_SAMPLE.id);
+    if (idx !== -1) state.assignments.splice(idx, 1);
+    state.assignments.unshift(JSON.parse(JSON.stringify(ESSAY_SAMPLE)));
+    markActivity(); switchTab('feed');
+  }
+  else if (a === 'process-text') {
+    const val = (state.ui.draftText || '').trim();
+    if (!val) { toast('Paste some text first'); return; }
+    state.ui.pendingUpload = { source: 'text', kind: 'text', title: `Pasted Set - ${new Date().toLocaleDateString()}`, subject: 'Other', dueDate: defaultDueDate(3), lines: parseLines(val) };
+    render();
+  }
+  else if (a === 'open-assignment') { state.ui.workView = 'detail'; state.ui.workAssignmentId = t.dataset.ass; render(); }
+  else if (a === 'ask-delete-assignment') { state.ui.confirmDeleteId = t.dataset.ass; render(); }
+  else if (a === 'cancel-delete-assignment') { state.ui.confirmDeleteId = null; render(); }
+  else if (a === 'confirm-delete-assignment') {
+    const id = t.dataset.ass;
+    const idx = state.assignments.findIndex(a2 => a2.id === id);
+    if (idx !== -1) state.assignments.splice(idx, 1);
+    state.ui.confirmDeleteId = null;
+    if (state.ui.workAssignmentId === id) { state.ui.workView = 'list'; state.ui.workAssignmentId = null; }
+    if (state.ui.workPlayer && state.ui.workPlayer.assignmentId === id) state.ui.workPlayer = null;
+    if (state.ui.feedScope === id) state.ui.feedScope = 'mix';
+    saveState();
+    render();
+    toast('Assignment removed');
+  }
+  else if (a === 'back-to-list') { state.ui.workView = 'list'; state.ui.workAssignmentId = null; render(); }
+  else if (a === 'back-to-detail') { state.ui.workPlayer = null; render(); }
+  else if (a === 'open-problem') {
+    const ass = getAssignment(t.dataset.ass), p = getProblem(ass, t.dataset.prob);
+    const firstIncomplete = p.steps.find(s => !s.completed) || p.steps[0];
+    state.ui.workPlayer = { assignmentId: ass.id, problemId: p.id, stepId: firstIncomplete.id };
+    render();
+  }
+  else if (a === 'start-sprint') {
+    const ass = getAssignment(t.dataset.ass);
+    const next = findNextStepInAssignment(ass, null);
+    if (next) { state.ui.workPlayer = { assignmentId: ass.id, problemId: next.problemId, stepId: next.stepId }; render(); }
+  }
+  else if (a === 'export-assignment') openExportSheet(t.dataset.ass);
+  else if (a === 'close-export') { document.getElementById('overlay-root').innerHTML = ''; }
+  else if (a === 'copy-sheet') {
+    const ass = getAssignment(t.dataset.ass);
+    const text = buildSheetText(ass);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard')).catch(() => toast('Copy failed  -  select text manually'));
+  }
+  else if (a === 'set-duedate') {} // handled by change event below
+
+  else if (a === 'toggle-hint') { document.getElementById('hint-box')?.classList.toggle('hidden'); }
+  else if (a === 'select-opt') {
+    const key = `${t.dataset.ass}_${t.dataset.prob}_${t.dataset.step}`;
+    state.ui.draftAnswers[key] = { index: Number(t.dataset.idx), checked: false };
+    render();
+  }
+  else if (a === 'check-answer') {
+    const key = `${t.dataset.ass}_${t.dataset.prob}_${t.dataset.step}`;
+    const sel = state.ui.draftAnswers[key];
+    if (!sel || sel.index === undefined) { toast('Pick an answer first'); return; }
+    const ass = getAssignment(t.dataset.ass), p = getProblem(ass, t.dataset.prob), s = getStep(p, t.dataset.step);
+    if (sel.index === s.correctIndex) {
+      sel.checked = true; render();
+      const result = completeHomeworkStep(t.dataset.ass, t.dataset.prob, t.dataset.step, sel.index);
+      if (!result.problemComplete) {
+        advanceWorkPlayerIfNeeded(t.dataset.ass);
+        setTimeout(() => render(), 700);
+      }
+    } else {
+      sel.checked = true; render();
+    }
+  }
+  else if (a === 'complete-free') {
+    const key = `${t.dataset.ass}_${t.dataset.prob}_${t.dataset.step}`;
+    const ass = getAssignment(t.dataset.ass), p = getProblem(ass, t.dataset.prob), s = getStep(p, t.dataset.step);
+    s.response = state.ui.draftAnswers[key]?.text || '';
+    if (t.dataset.grade) s.selfGrade = t.dataset.grade;
+    const result = completeHomeworkStep(t.dataset.ass, t.dataset.prob, t.dataset.step);
+    if (!result.problemComplete) advanceWorkPlayerIfNeeded(t.dataset.ass);
+    render();
+  }
+  else if (a === 'save-transcription') {
+    const key = `${t.dataset.ass}_${t.dataset.prob}_${t.dataset.step}`;
+    const ass = getAssignment(t.dataset.ass), p = getProblem(ass, t.dataset.prob), s = getStep(p, t.dataset.step);
+    const text = (state.ui.draftAnswers[key]?.text || '').trim();
+    if (!text) { toast('Type the problem first'); return; }
+    p.expr = escapeHtml(text);
+    s.response = text;
+    const result = completeHomeworkStep(t.dataset.ass, t.dataset.prob, t.dataset.step);
+    if (!result.problemComplete) advanceWorkPlayerIfNeeded(t.dataset.ass);
+    render();
+  }
+  else if (a === 'add-problem') {
+    const ass = getAssignment(t.dataset.ass);
+    ass.problems.push(newGenericProblem(ass.problems.length + 1));
+    saveState(); render();
+    toast('Problem added');
+  }
+  else if (a === 'reveal-answer-key') { state.ui.draftAnswers[t.dataset.key] = true; render(); }
+  else if (a === 'close-overlay-continue') {
+    document.getElementById('overlay-root').innerHTML = '';
+    if (state.ui.workPlayer) {
+      const ass = getAssignment(state.ui.workPlayer.assignmentId);
+      const next = findNextStepInAssignment(ass, state.ui.workPlayer.problemId);
+      if (next) state.ui.workPlayer = { assignmentId: ass.id, problemId: next.problemId, stepId: next.stepId };
+      else { state.ui.workPlayer = null; state.ui.workView = 'detail'; }
+    }
+    render();
+  }
+  else if (a === 'close-overlay-export') {
+    document.getElementById('overlay-root').innerHTML = '';
+    state.ui.workPlayer = null; state.ui.workView = 'detail';
+    render();
+    openExportSheet(t.dataset.ass);
+  }
+
+  else if (a === 'open-exam') { state.ui.studyExam = t.dataset.exam; render(); }
+  else if (a === 'back-to-exams') { state.ui.studyExam = null; render(); }
+  else if (a === 'start-deck') { state.ui.studyDeckId = t.dataset.deck; state.ui.studyCardIndex = 0; render(); }
+  else if (a === 'retry-deck') {
+    const deck = getDeck(t.dataset.deck);
+    deck.cards.forEach(c => { if (state.studyProgress[deck.id]) delete state.studyProgress[deck.id][c.id]; });
+    state.ui.studyCardIndex = 0; render();
+  }
+  else if (a === 'exit-deck') { state.ui.studyDeckId = null; state.ui.studyCardIndex = 0; render(); }
+  else if (a === 'study-select') {
+    const key = `study_${t.dataset.deck}_${t.dataset.card}`;
+    state.ui.draftAnswers[key] = { index: Number(t.dataset.idx), checked: false };
+    render();
+  }
+  else if (a === 'study-check') {
+    const key = `study_${t.dataset.deck}_${t.dataset.card}`;
+    const sel = state.ui.draftAnswers[key];
+    if (!sel || sel.index === undefined) { toast('Pick an answer first'); return; }
+    sel.checked = true;
+    completeStudyCard(t.dataset.deck, t.dataset.card, sel.index);
+    render();
+  }
+  else if (a === 'study-session-next') { state.ui.studyCardIndex++; render(); }
+  else if (a === 'study-free-done') {
+    const key = `study_${t.dataset.deck}_${t.dataset.card}`;
+    const text = state.ui.draftAnswers[key]?.text || '';
+    completeFreeStudyCard(t.dataset.deck, t.dataset.card, text);
+    render();
+  }
+});
+
+document.addEventListener('change', e => {
+  const t = e.target.closest('[data-action="set-duedate"]');
+  if (t) { const ass = getAssignment(t.dataset.ass); ass.dueDate = t.value; render(); return; }
+  if (e.target.id === 'pu-subject' && state.ui.pendingUpload) { state.ui.pendingUpload.subject = e.target.value; }
+  else if (e.target.id === 'pu-due' && state.ui.pendingUpload) { state.ui.pendingUpload.dueDate = e.target.value; }
+});
+
+document.addEventListener('input', e => {
+  if (e.target.matches('[data-action="free-input"]') || e.target.matches('[data-action="study-free-input"]')) {
+    const key = e.target.dataset.key;
+    if (!state.ui.draftAnswers[key]) state.ui.draftAnswers[key] = {};
+    state.ui.draftAnswers[key].text = e.target.value;
+  } else if (e.target.id === 'pu-title') {
+    if (state.ui.pendingUpload) state.ui.pendingUpload.title = e.target.value;
+  } else if (e.target.id === 'pu-count') {
+    if (state.ui.pendingUpload) state.ui.pendingUpload.count = Math.max(1, Number(e.target.value) || 1);
+  } else if (e.target.id === 'pu-answerkey') {
+    if (state.ui.pendingUpload) state.ui.pendingUpload.answerKeyText = e.target.value;
+  } else if (e.target.id === 'pu-lines-text') {
+    if (state.ui.pendingUpload) state.ui.pendingUpload.lines = parseLines(e.target.value);
+  }
+});
+
+/* ============================== BOOT ============================== */
+loadState();
+switchTab(state.ui.tab || 'feed');
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+
+</body></html>
