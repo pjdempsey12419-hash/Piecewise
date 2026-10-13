@@ -3,10 +3,10 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#1c140d">
+<meta name="theme-color" content="#FAF9F6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Piecewise">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,17 +19,19 @@
     theme: {
       extend: {
         colors: {
-          bg: '#1c140d',
-          surface: '#2c2116',
-          surface2: '#372a1c',
-          line: 'rgba(255,255,255,0.12)',
-          linesoft: 'rgba(255,255,255,0.07)',
-          ink: '#f7f2e9',
-          ink2: '#b6a995',
-          ink3: '#8c7e6a',
-          accent: { 50:'#f8f1e3', 100:'#eeddbd', 400:'#ddc496', 500:'#cdb183', 600:'#a98a5c', 700:'#876d49' },
-          good: '#8aa473',
-          bad: '#aa5d4c',
+          bg: '#FAF9F6',
+          surface: '#FFFFFF',
+          surface2: '#F3F2EE',
+          line: '#D9D9D9',
+          linesoft: '#E8E7E3',
+          ink: '#2F2F2F',
+          ink2: '#6E6E6E',
+          ink3: '#9A9A9A',
+          accent: { 50:'#EFF5F2', 100:'#D6E5DE', 400:'#B9D2C7', 500:'#A7C4B8', 600:'#86A899', 700:'#67887A' },
+          sky: { 100:'#E2EDF8', 500:'#AFC8E8', 600:'#8FB0D8' },
+          peach: { 100:'#FDEEE3', 500:'#F6D7C1', 600:'#E8B894' },
+          good: '#7FA98F',
+          bad: '#D08C7F',
         },
         fontFamily: {
           display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -43,12 +45,12 @@
 </script>
 
 <style>
-  :root { color-scheme: dark; }
+  :root { color-scheme: light; }
   html, body { height: 100%; }
   body {
     margin: 0;
-    background: #120d08;
-    color: #f7f2e9;
+    background: #EFEEEA;
+    color: #2F2F2F;
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.006em;
     -webkit-font-smoothing: antialiased;
@@ -63,7 +65,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(120% 90% at 50% -10%, #241a0f 0%, #120d08 60%);
+    background: radial-gradient(120% 90% at 50% -10%, #F6F5F1 0%, #E7E6E1 70%);
     padding: 0;
   }
   .app-viewport {
@@ -76,53 +78,39 @@
     overflow: hidden;
     border: 0;
     isolation: isolate;
-    background:
-      radial-gradient(65% 42% at 12% 0%, rgba(221,196,150,0.28), transparent 60%),
-      radial-gradient(75% 55% at 105% 105%, rgba(160,118,64,0.26), transparent 60%),
-      linear-gradient(165deg, #4a3620 0%, #241a10 45%, #160f09 100%);
-  }
-  .app-viewport::before {
-    content: '';
-    position: absolute; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity: 0.035;
-    mix-blend-mode: overlay;
-    pointer-events: none;
-    z-index: 1;
+    background: #FAF9F6;
   }
   @media (min-width: 640px) {
     .stage { padding: 24px; }
     .app-viewport {
       height: min(94dvh, 900px);
       border-radius: 28px;
-      border: 1px solid rgba(255,255,255,0.10);
-      box-shadow: 0 0 0 1px rgba(205,177,131,.12) inset, 0 32px 64px -28px rgba(0,0,0,0.85);
+      border: 1px solid #E3E2DE;
+      box-shadow: 0 24px 60px -30px rgba(47,47,47,0.28);
     }
   }
 
-  /* Soften the whole shape language app-wide to match a generous, glassy radius
-     scale, without having to touch every element's utility classes individually. */
-  .app-viewport [class*="rounded-2xl"]:not([class*="grad-btn"]) { border-radius: 22px !important; }
-  .app-viewport [class*="rounded-xl"]:not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 18px !important; }
-  .app-viewport [class*="rounded-lg"]:not([class*="rounded-xl"]):not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 13px !important; }
+  /* One generous, consistent radius scale app-wide, without touching every element. */
+  .app-viewport [class*="rounded-2xl"]:not([class*="grad-btn"]) { border-radius: 20px !important; }
+  .app-viewport [class*="rounded-xl"]:not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 16px !important; }
+  .app-viewport [class*="rounded-lg"]:not([class*="rounded-xl"]):not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 12px !important; }
   .app-viewport [class*="rounded-md"]:not([class*="grad-btn"]) { border-radius: 10px !important; }
 
-  /* Frosted-glass material for every surface/surface2 card app-wide. */
+  /* Soft paper cards: white on warm off-white, hairline border, gentle lift. */
   .app-viewport [class*="bg-surface2"] {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02)),
-      rgba(58,42,24,0.55) !important;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    background: #ECEBE6 !important;
+    box-shadow: none;
   }
+
+  /* The pastel accents are fills, not text colours  -  sage on white is only ~1.9:1.
+     Anywhere they're used as TEXT, swap in a deeper shade of the same hue so it
+     actually clears WCAG AA. Backgrounds and borders keep the soft pastel. */
+  .app-viewport [class*="text-accent-"] { color: #5E8273 !important; }
+  .app-viewport [class*="text-good"] { color: #4F7A5F !important; }
+  .app-viewport [class*="text-bad"] { color: #B0594A !important; }
   .app-viewport [class*="bg-surface"]:not([class*="bg-surface2"]) {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.012)),
-      rgba(48,36,21,0.48) !important;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    box-shadow: 0 10px 28px -14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+    background: #FFFFFF !important;
+    box-shadow: 0 1px 2px rgba(47,47,47,0.04), 0 8px 20px -14px rgba(47,47,47,0.14);
   }
 
   header.app-header { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
@@ -136,25 +124,25 @@
 
   .app-viewport [class*="grad-btn"] { border-radius: 999px !important; }
   .grad-btn {
-    background: linear-gradient(135deg, #f1e7d4, #cfae7d); color: #241a0f; border-color: transparent !important;
+    background: #A7C4B8; color: #23312B; border-color: transparent !important;
     font-weight: 600 !important; letter-spacing: -0.006em;
-    box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 6px 16px -6px rgba(0,0,0,.5);
-    transition: transform .1s cubic-bezier(.2,.8,.2,1), filter .15s ease, box-shadow .15s ease;
+    box-shadow: 0 1px 2px rgba(47,47,47,0.10), 0 6px 14px -8px rgba(103,136,122,0.55);
+    transition: transform .1s cubic-bezier(.2,.8,.2,1), background .15s ease, box-shadow .15s ease;
   }
-  .grad-btn:hover { filter: brightness(1.06); }
-  .grad-btn:active { transform: scale(.97); filter: brightness(.94); box-shadow: 0 1px 2px rgba(0,0,0,.25) inset; }
-  .grad-text { color: #f7f2e9; }
-  .grad-ring { background: #cdb183; }
+  .grad-btn:hover { background: #B9D2C7; }
+  .grad-btn:active { transform: scale(.97); background: #86A899; box-shadow: inset 0 1px 2px rgba(47,47,47,0.18); }
+  .grad-text { color: #2F2F2F; }
+  .grad-ring { background: #A7C4B8; }
 
   .option-btn { transition: border-color .15s ease, background .15s ease, transform .1s ease; }
-  .option-btn:hover { border-color: rgba(255,255,255,0.22); }
+  .option-btn:hover { border-color: #C2C1BD; }
   .option-btn:active { transform: scale(.99); }
-  .option-btn.selected { background: rgba(205,177,131,0.14) !important; border-color: #cdb183 !important; }
-  .option-btn.selected .bubble { background:#cdb183 !important; color:#241a0f !important; border-color:#cdb183 !important; }
-  .option-btn.correct { background: rgba(138,164,115,0.16) !important; border-color: #8aa473 !important; }
-  .option-btn.correct .bubble { background:#8aa473 !important; color:#10190b !important; border-color:#8aa473 !important; }
-  .option-btn.wrong { background: rgba(170,93,76,0.16) !important; border-color: #aa5d4c !important; animation: shake .32s; }
-  .option-btn.wrong .bubble { background:#aa5d4c !important; color:#1f0a07 !important; border-color:#aa5d4c !important; }
+  .option-btn.selected { background: #EFF5F2 !important; border-color: #A7C4B8 !important; }
+  .option-btn.selected .bubble { background:#A7C4B8 !important; color:#23312B !important; border-color:#A7C4B8 !important; }
+  .option-btn.correct { background: #EAF2EC !important; border-color: #7FA98F !important; }
+  .option-btn.correct .bubble { background:#7FA98F !important; color:#FFFFFF !important; border-color:#7FA98F !important; }
+  .option-btn.wrong { background: #FBEDEA !important; border-color: #D08C7F !important; animation: shake .32s; }
+  .option-btn.wrong .bubble { background:#D08C7F !important; color:#FFFFFF !important; border-color:#D08C7F !important; }
   @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
 
   @keyframes fadeUp { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: translateY(0); } }
@@ -169,21 +157,21 @@
 
   .nav-btn { position: relative; transition: color .15s ease; }
   .nav-btn::after {
-    content: ''; position: absolute; top: -2px; left: 50%; width: 3px; height: 3px;
-    background: #cdb183; opacity: 0; transform: translate(-50%, 2px) scale(.5);
+    content: ''; position: absolute; top: -2px; left: 50%; width: 4px; height: 4px; border-radius: 999px;
+    background: #A7C4B8; opacity: 0; transform: translate(-50%, 2px) scale(.5);
     transition: opacity .15s ease, transform .15s ease;
   }
   .nav-btn.text-ink::after { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
   /* Small flourish rule under section headings */
   .section-rule { display: flex; align-items: center; gap: 8px; }
-  .section-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, rgba(255,255,255,0.14), transparent); }
-  .section-rule .diamond { width: 4px; height: 4px; background: #cdb183; transform: rotate(45deg); flex-shrink: 0; opacity: .9; }
+  .section-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, #DEDDD9, transparent); }
+  .section-rule .diamond { width: 4px; height: 4px; background: #A7C4B8; transform: rotate(45deg); flex-shrink: 0; }
 
   /* Fine corner brackets for the hero/ornate cards */
   .ornate-card { position: relative; }
   .ornate-card::before, .ornate-card::after,
-  .ornate-card .bracket-br, .ornate-card .bracket-bl { content: ''; position: absolute; width: 9px; height: 9px; border-color: rgba(255,255,255,0.35); opacity: .7; pointer-events: none; }
+  .ornate-card .bracket-br, .ornate-card .bracket-bl { content: ''; position: absolute; width: 9px; height: 9px; border-color: #C9D9D1; pointer-events: none; }
   .ornate-card::before { top: 5px; left: 5px; border-top: 1.5px solid; border-left: 1.5px solid; }
   .ornate-card::after { top: 5px; right: 5px; border-top: 1.5px solid; border-right: 1.5px solid; }
   .ornate-card .bracket-bl { bottom: 5px; left: 5px; border-bottom: 1.5px solid; border-left: 1.5px solid; }
@@ -191,15 +179,15 @@
 
   /* Vertical numbered step tracker (assignment problem list) */
   .stepper { position: relative; }
-  .stepper-line { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 1px; background: rgba(255,255,255,0.14); }
+  .stepper-line { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 1px; background: #E2E1DD; }
   .stepper-node {
     width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; shrink: 0; position: relative; z-index: 1;
+    font-size: 12px; font-weight: 700; shrink: 0; position: relative; z-index: 1; background: #FAF9F6;
   }
-  .stepper-node.done { background: #cdb183; color: #241a0f; }
-  .stepper-node.current { background: transparent; color: #241a0f; }
-  .stepper-node.current .ring2 { position:absolute; inset:0; border-radius:999px; background:#cdb183; }
-  .stepper-node.upcoming { border: 1.5px solid rgba(255,255,255,0.2); color: #b6a995; }
+  .stepper-node.done { background: #A7C4B8; color: #23312B; }
+  .stepper-node.current { background: transparent; color: #23312B; }
+  .stepper-node.current .ring2 { position:absolute; inset:0; border-radius:999px; background:#A7C4B8; }
+  .stepper-node.upcoming { border: 1.5px solid #D9D9D9; color: #9A9A9A; }
 
   @keyframes confettiPop {
     0% { transform: translate(0,0) rotate(0deg); opacity:1; }
@@ -207,8 +195,9 @@
   }
   .confetti-piece { position: fixed; width:6px; height:11px; border-radius:1px; pointer-events:none; z-index:300; animation: confettiPop .9s ease-out forwards; }
 
-  input[type="date"] { color-scheme: dark; }
+  input[type="date"] { color-scheme: light; }
   textarea:focus, input:focus { outline: none; }
+  ::placeholder { color: #A9A8A4; }
 </style>
 
 <div class="stage">
@@ -217,13 +206,13 @@
     <header class="app-header shrink-0 z-20">
       <div class="px-5 pb-3 bg-bg flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-lg bg-surface2 flex items-center justify-center shrink-0" style="border:1px solid rgba(255,255,255,0.18);box-shadow:0 0 0 2px #241a0f, 0 0 0 3px rgba(255,255,255,0.18)">
-            <svg viewBox="0 0 64 64" class="w-7 h-7" aria-hidden="true" fill="none" stroke="#eaddc3" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#c2965c" stroke="#c2965c" opacity="0.9"/>
+          <div class="w-9 h-9 rounded-lg bg-surface2 flex items-center justify-center shrink-0" style="border:1px solid #E2E1DD">
+            <svg viewBox="0 0 64 64" class="w-7 h-7" aria-hidden="true" fill="none" stroke="#2F2F2F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#A7C4B8" stroke="#A7C4B8"/>
               <circle cx="32" cy="36" r="18"/>
               <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
-              <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#241a0f"/>
-              <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#241a0f"/>
+              <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#2F2F2F"/>
+              <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#2F2F2F"/>
               <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
               <path d="M30 38.5h3.5"/>
               <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
@@ -234,23 +223,22 @@
           </div>
           <div class="leading-none">
             <h1 class="text-[17px] font-display font-bold text-ink tracking-tight leading-none">Piecewise</h1>
-            <p class="text-[8.5px] text-ink3 uppercase tracking-[0.18em] mt-1">Est. in the margins</p>
+            <p class="text-[8.5px] text-ink3 uppercase tracking-[0.18em] mt-1">Small steps. Big progress.</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface" style="border:1px solid rgba(255,255,255,0.18)" title="Day streak">
-            <span class="w-5 h-5 rounded-full bg-bg flex items-center justify-center" style="border:1px solid rgba(255,255,255,0.18)">
-              <svg class="w-2.5 h-2.5 text-accent-500" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
+          <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface2" style="border:1px solid #E2E1DD" title="Day streak">
+            <span class="w-5 h-5 rounded-full bg-surface flex items-center justify-center" style="border:1px solid #E2E1DD">
+              <svg class="w-2.5 h-2.5" style="color:#E8B894" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
             </span>
             <span id="streak-counter" class="text-xs font-semibold text-ink font-mono">0</span>
           </div>
-          <button data-action="open-settings" class="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-ink2 shrink-0" style="border:1px solid rgba(255,255,255,0.18)" title="Settings" aria-label="Settings">
+          <button data-action="open-settings" class="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center text-ink2 shrink-0" style="border:1px solid #E2E1DD" title="Settings" aria-label="Settings">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
         </div>
       </div>
       <div class="h-px bg-line"></div>
-      <div class="h-px bg-bg/0" style="border-top:1px solid rgba(211,214,216,0.08)"></div>
     </header>
 
     <main id="main" class="flex-1 overflow-y-auto no-scrollbar relative bg-bg"></main>
@@ -325,26 +313,35 @@ function subjectIcon(subject) {
   const map = { Math: 'sigma', Calculus: 'sigma', Science: 'flask', English: 'bookOpen', History: 'landmark', Language: 'globe' };
   return map[subject] || 'sparkle';
 }
-function subjectColor(subject) {
-  const map = { Math: '#c2965c', Calculus: '#c2965c', Science: '#7f9468', English: '#5f7a92', History: '#ad8a35', Language: '#8a5a72' };
-  return map[subject] || '#b7a58e';
-}
+// Soft pastel tints, one per subject. `tint` is the card/chip fill, `ink` the icon and
+// label colour on top of it  -  a deeper shade of the same hue so it stays readable.
+const SUBJECT_COLORS = {
+  Math:     { tint: '#E2EDF8', ink: '#5B7FA6' },
+  Calculus: { tint: '#E2EDF8', ink: '#5B7FA6' },
+  Science:  { tint: '#E4EFE9', ink: '#5E8A72' },
+  English:  { tint: '#EDE7F5', ink: '#7B6A9B' },
+  History:  { tint: '#FDEEE3', ink: '#B5825A' },
+  Language: { tint: '#FAE6EC', ink: '#A96B82' },
+};
+const SUBJECT_FALLBACK = { tint: '#F0EFEB', ink: '#7A7A76' };
+function subjectPalette(subject) { return SUBJECT_COLORS[subject] || SUBJECT_FALLBACK; }
+function subjectColor(subject) { return subjectPalette(subject).ink; }
 function subjectChipHTML(subject, size) {
-  const c = subjectColor(subject);
+  const { tint, ink } = subjectPalette(subject);
   const dim = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-9 h-9' : 'w-8 h-8';
   const iconCls = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  return `<div class="${dim} rounded-lg flex items-center justify-center shrink-0" style="background:${c}1c;color:${c};border:1px solid ${c}3d">${icon(subjectIcon(subject), iconCls)}</div>`;
+  return `<div class="${dim} rounded-lg flex items-center justify-center shrink-0" style="background:${tint};color:${ink}">${icon(subjectIcon(subject), iconCls)}</div>`;
 }
 
 // The Piecewise mascot: a pie-chart face in a top hat, glasses and monocle.
 // Reused at header size and blown up for empty/summary states.
 function mascotMarkHTML(cls) {
-  return `<svg viewBox="0 0 64 64" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="#eaddc3" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#c2965c" stroke="#c2965c" opacity="0.9"/>
+  return `<svg viewBox="0 0 64 64" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="#2F2F2F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#A7C4B8" stroke="#A7C4B8"/>
     <circle cx="32" cy="36" r="18"/>
     <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
-    <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#241a0f"/>
-    <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#241a0f"/>
+    <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#2F2F2F"/>
+    <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#2F2F2F"/>
     <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
     <path d="M30 38.5h3.5"/>
     <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
@@ -354,7 +351,7 @@ function mascotMarkHTML(cls) {
   </svg>`;
 }
 function mascotBadgeHTML(dim) {
-  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid rgba(255,255,255,0.18);box-shadow:0 0 0 3px #241a0f, 0 0 0 4px rgba(255,255,255,0.18)">${mascotMarkHTML('w-9 h-9')}</div>`;
+  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid #E2E1DD">${mascotMarkHTML('w-9 h-9')}</div>`;
 }
 // Pocket-watch tick marks for the progress ring, drawn as short radial lines.
 function ringTicksHTML(cx, cy, rOuter, rInner, count) {
@@ -412,7 +409,7 @@ function burstConfetti() {
 function toast(msg) {
   const el = document.createElement('div');
   el.className = 'pop';
-  el.style.cssText = 'position:absolute;left:50%;bottom:86px;transform:translateX(-50%);background:rgba(44,33,22,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.18);color:#f7f2e9;font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;z-index:250;box-shadow:0 10px 30px rgba(0,0,0,.5);white-space:nowrap;';
+  el.style.cssText = 'position:absolute;left:50%;bottom:86px;transform:translateX(-50%);background:#2F2F2F;color:#FAF9F6;font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;z-index:250;box-shadow:0 10px 26px -10px rgba(47,47,47,.5);white-space:nowrap;';
   el.textContent = msg;
   document.getElementById('app-viewport').appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 1500);
@@ -1243,16 +1240,23 @@ function renderFeedTab() {
   }
   const ringOffset = ringC - (pct / 100) * ringC;
 
+  const dueCount = state.assignments.filter(a => getAssignmentStats(a).remaining > 0).length;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const todayLabel = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+
   return `
     <div class="p-4 space-y-4">
+      <div>
+        <h2 class="text-[22px] font-display font-bold text-ink tracking-tight leading-tight">${greeting}.</h2>
+        <p class="text-[11.5px] text-ink2 mt-1">${todayLabel} &middot; <span class="font-semibold text-ink">${dueCount} assignment${dueCount === 1 ? '' : 's'}</span> in progress</p>
+      </div>
       ${selectorHtml}
-      <div class="p-4 rounded-xl bg-surface ornate-card flex items-center gap-3" style="border:1px solid rgba(255,255,255,0.18)">
-        <span class="bracket-bl"></span><span class="bracket-br"></span>
+      <div class="p-4 rounded-xl flex items-center gap-3.5" style="background:#EFF5F2;border:1px solid #D6E5DE">
         <div class="relative w-16 h-16 shrink-0">
           <svg class="ring-chart w-16 h-16" viewBox="0 0 64 64">
-            <g stroke="rgba(255,255,255,0.18)" stroke-width="1">${ringTicksHTML(32, 32, 30.5, 28, 24)}</g>
-            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="5"/>
-            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="#cdb183" stroke-width="5" stroke-linecap="round"
+            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="#86A899" stroke-width="6" stroke-linecap="round"
               stroke-dasharray="${ringC}" stroke-dashoffset="${ringOffset}"/>
           </svg>
           <div class="absolute inset-0 flex items-center justify-center">
@@ -1260,10 +1264,11 @@ function renderFeedTab() {
           </div>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="text-[12.5px] font-bold text-ink truncate font-display">${escapeHtml(ringTitle)}</div>
-          <div class="text-[10px] text-ink2 font-semibold mt-0.5">${ringSub}</div>
+          <div class="text-[9.5px] font-bold uppercase tracking-[0.14em]" style="color:#67887A">Current</div>
+          <div class="text-[13.5px] font-display font-bold text-ink truncate mt-0.5">${escapeHtml(ringTitle)}</div>
+          <div class="text-[10.5px] text-ink2 font-medium mt-0.5">${ringSub}</div>
         </div>
-        <button data-action="goto-tab" data-tab="calendar" class="text-[10px] font-bold text-accent-500 flex items-center gap-1 shrink-0">Pace ${icon('chevronRight','w-3 h-3')}</button>
+        <button data-action="goto-tab" data-tab="calendar" class="text-[10px] font-bold flex items-center gap-1 shrink-0" style="color:#67887A">Pace ${icon('chevronRight','w-3 h-3')}</button>
       </div>
       ${bodyHtml}
     </div>
@@ -1581,10 +1586,10 @@ function showReadingOverlay() {
   const root = document.getElementById('overlay-root');
   if (!root) return;
   root.innerHTML = `
-    <div class="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-5">
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
       <div class="bg-surface border border-line rounded-2xl p-6 w-full max-w-xs space-y-4 pop text-center">
         <div class="w-12 h-12 rounded-full border-2 border-line flex items-center justify-center mx-auto relative">
-          <span class="w-12 h-12 rounded-full border-2 border-transparent absolute inset-0 animate-spin" style="border-top-color:#cdb183"></span>
+          <span class="w-12 h-12 rounded-full border-2 border-transparent absolute inset-0 animate-spin" style="border-top-color:#A7C4B8"></span>
           ${icon('sparkle', 'w-5 h-5 text-accent-500')}
         </div>
         <div>
@@ -1857,12 +1862,12 @@ function runProcessing(onDone) {
   const root = document.getElementById('overlay-root');
   function paint(pct) {
     root.innerHTML = `
-      <div class="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-5">
+      <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
         <div class="bg-surface border border-line rounded-2xl p-6 w-full max-w-xs space-y-5 pop">
           <div class="w-14 h-14 rounded-full border-2 border-line flex items-center justify-center mx-auto relative">
             <svg class="ring-chart w-14 h-14 absolute" viewBox="0 0 56 56">
-                            <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="4"/>
-              <circle cx="28" cy="28" r="24" fill="none" stroke="#cdb183" stroke-width="4" stroke-linecap="round"
+                            <circle cx="28" cy="28" r="24" fill="none" stroke="#E2E1DD" stroke-width="4"/>
+              <circle cx="28" cy="28" r="24" fill="none" stroke="#A7C4B8" stroke-width="4" stroke-linecap="round"
                 stroke-dasharray="${2*Math.PI*24}" stroke-dashoffset="${2*Math.PI*24*(1-pct/100)}"/>
             </svg>
             ${icon('fileText','w-5 h-5 text-accent-500')}
@@ -2072,7 +2077,7 @@ function showProblemCompleteOverlay(ass, p) {
   const anyIncorrect = p.steps.some(s => s.selfGrade === 'incorrect');
   const root = document.getElementById('overlay-root');
   root.innerHTML = `
-    <div class="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-5">
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
       <div class="bg-surface border border-line rounded-2xl p-5 max-w-xs w-full space-y-4 pop">
         <div class="w-12 h-12 rounded-full ${anyIncorrect ? 'bg-surface2 border-line text-ink2' : 'bg-good/10 border-good/25 text-good'} border flex items-center justify-center mx-auto">${icon('checkCircle','w-6 h-6')}</div>
         <div class="text-center space-y-1">
@@ -2404,7 +2409,7 @@ function openEditProblemSheet(assId, probId) {
   const ass = getAssignment(assId), p = getProblem(ass, probId);
   const root = document.getElementById('overlay-root');
   root.innerHTML = `
-    <div class="absolute inset-0 bg-black/70 z-50 flex items-center justify-center p-5">
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
       <div class="bg-surface border border-line rounded-2xl p-5 max-w-sm w-full space-y-3 pop">
         <div class="flex items-center justify-between">
           <span class="text-sm font-bold text-ink">Edit Problem ${p.index}</span>
@@ -2420,7 +2425,7 @@ function openDeleteProblemConfirm(assId, probId) {
   const ass = getAssignment(assId), p = getProblem(ass, probId);
   const root = document.getElementById('overlay-root');
   root.innerHTML = `
-    <div class="absolute inset-0 bg-black/70 z-50 flex items-center justify-center p-5">
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
       <div class="bg-surface border border-line rounded-2xl p-5 max-w-xs w-full space-y-4 pop">
         <div class="text-sm text-ink"><span class="font-bold">Remove Problem ${p.index}?</span> <span class="text-ink2">This can't be undone.</span></div>
         <div class="flex items-center gap-2">
