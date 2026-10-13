@@ -237,11 +237,16 @@
             <p class="text-[8.5px] text-ink3 uppercase tracking-[0.18em] mt-1">Est. in the margins</p>
           </div>
         </div>
-        <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface" style="border:1px solid rgba(255,255,255,0.18)" title="Day streak">
-          <span class="w-5 h-5 rounded-full bg-bg flex items-center justify-center" style="border:1px solid rgba(255,255,255,0.18)">
-            <svg class="w-2.5 h-2.5 text-accent-500" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
-          </span>
-          <span id="streak-counter" class="text-xs font-semibold text-ink font-mono">0</span>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface" style="border:1px solid rgba(255,255,255,0.18)" title="Day streak">
+            <span class="w-5 h-5 rounded-full bg-bg flex items-center justify-center" style="border:1px solid rgba(255,255,255,0.18)">
+              <svg class="w-2.5 h-2.5 text-accent-500" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
+            </span>
+            <span id="streak-counter" class="text-xs font-semibold text-ink font-mono">0</span>
+          </div>
+          <button data-action="open-settings" class="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-ink2 shrink-0" style="border:1px solid rgba(255,255,255,0.18)" title="Settings" aria-label="Settings">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
         </div>
       </div>
       <div class="h-px bg-line"></div>
@@ -273,6 +278,7 @@
       </button>
     </nav>
 
+    <input type="file" id="import-file-input" class="hidden" accept="application/json,.json">
     <div id="overlay-root"></div>
   </div>
 </div>
@@ -412,6 +418,12 @@ function toast(msg) {
   setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 1500);
 }
 
+// Light haptic feedback (Android Chrome supports navigator.vibrate; iOS Safari never has, so this
+// is a harmless no-op there  -  feature-detected, never throws).
+function haptic(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+}
+
 /* ============================== SAMPLE CONTENT ============================== */
 const CALC_SAMPLE = {
   id: 'doc_ftc',
@@ -494,6 +506,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'Solve: 4(x + 3) = 2x + 18', options: ['x = 3', 'x = 5', 'x = 2', 'x = 6'], correctIndex: 0, explain: '4x + 12 = 2x + 18, so 2x = 6, x = 3.' },
     { id: 'c6', q: 'If h(x) = x&#178; + 2x, what is h(&minus;3)?', options: ['3', '&minus;3', '9', '15'], correctIndex: 0, explain: 'h(&minus;3) = 9 &minus; 6 = 3.' },
     { id: 'c7', q: 'What is the solution set of |x &minus; 4| = 6?', options: ['x = 10 or x = &minus;2', 'x = 10 only', 'x = &minus;2 only', 'x = 2 or x = &minus;10'], correctIndex: 0, explain: 'x &minus; 4 = 6 gives x = 10; x &minus; 4 = &minus;6 gives x = &minus;2.' },
+    { id: 'c8', q: 'Solve the system: x + y = 10, x &minus; y = 4. What is x?', options: ['x = 6', 'x = 7', 'x = 8', 'x = 3'], correctIndex: 1, explain: 'Adding the two equations: 2x = 14, so x = 7.' },
+    { id: 'c9', q: 'Use the quadratic formula to solve x&#178; &minus; 5x + 6 = 0.', options: ['x = 1 or x = 6', 'x = &minus;2 or x = &minus;3', 'x = 2 or x = 3', 'x = &minus;1 or x = &minus;6'], correctIndex: 2, explain: 'The formula gives the same roots as factoring (x&minus;2)(x&minus;3) = 0: x = 2 or x = 3.' },
+    { id: 'c10', q: 'Solve the inequality: 3x &minus; 7 &le; 11', options: ['x &le; 6', 'x &ge; 6', 'x &le; 4', 'x &ge; 4'], correctIndex: 0, explain: 'Add 7 to both sides: 3x &le; 18, then divide by 3: x &le; 6.' },
+    { id: 'c11', q: 'A bacteria population doubles every 3 hours, starting at 100. What is the population after 9 hours?', options: ['200', '400', '600', '800'], correctIndex: 3, explain: 'In 9 hours there are 9/3 = 3 doubling periods: 100 &times; 2&#179; = 800.' },
+    { id: 'c12', q: 'If f(x) = x + 2 and g(x) = 3x, what is f(g(2))?', options: ['6', '8', '10', '12'], correctIndex: 1, explain: 'g(2) = 3(2) = 6, then f(6) = 6 + 2 = 8.' },
+    { id: 'c13', q: 'y varies directly with x. If y = 15 when x = 3, what is y when x = 7?', options: ['21', '28', '35', '42'], correctIndex: 2, explain: 'The constant of variation is k = 15/3 = 5, so y = 5(7) = 35.' },
+    { id: 'c14', q: 'What is the vertex of the parabola y = (x &minus; 2)&#178; + 5?', options: ['(2, 5)', '(&minus;2, 5)', '(2, &minus;5)', '(5, 2)'], correctIndex: 0, explain: 'In vertex form y = (x &minus; h)&#178; + k, the vertex is (h, k) = (2, 5).' },
+    { id: 'c15', q: 'A rental company charges a $25 flat fee plus $0.50 per mile. Which equation gives total cost C for m miles?', options: ['C = 0.50m &minus; 25', 'C = 25m + 0.50', 'C = 25 + m', 'C = 25 + 0.50m'], correctIndex: 3, explain: 'The flat fee (25) is added to the per-mile rate (0.50) times miles driven (m).' },
+    { id: 'c16', q: 'Solve for x: (x + 1)/3 = 4', options: ['x = 9', 'x = 11', 'x = 13', 'x = 15'], correctIndex: 1, explain: 'Multiply both sides by 3: x + 1 = 12, so x = 11.' },
+    { id: 'c17', q: 'Solve: 2/x = 8/20', options: ['x = 2', 'x = 4', 'x = 5', 'x = 10'], correctIndex: 2, explain: 'Cross-multiplying gives 8x = 40, so x = 5.' },
   ]},
   { id: 'sat-vocab', exam: 'SAT', title: 'Reading & Writing', cards: [
     { id: 'c1', q: '"Ephemeral" most nearly means:', options: ['Short-lived', 'Permanent', 'Colorful', 'Expensive'], correctIndex: 0, explain: 'Ephemeral describes something that lasts only a very short time.' },
@@ -503,6 +525,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'Best transition: "The bridge was closed for repairs. ___, traffic was rerouted."', options: ['As a result', 'However', 'For example', 'In contrast'], correctIndex: 0, explain: 'The rerouting is a direct consequence of the closure, so a result-transition fits.' },
     { id: 'c6', q: '"Ambiguous" most nearly means:', options: ['Open to more than one interpretation', 'Perfectly clear', 'Very loud', 'Untrue'], correctIndex: 0, explain: 'Ambiguous describes language that can be understood in more than one way.' },
     { id: 'c7', q: 'Most concise revision of: "In spite of the fact that she was tired, she finished the race."', options: ['Although she was tired, she finished the race.', 'Despite the fact of tiredness, she finished the race.', 'She was tired, in spite of that she finished the race.', 'No revision needed.'], correctIndex: 0, explain: '"In spite of the fact that" can be replaced by the single word "although."' },
+    { id: 'c8', q: '"Candid" most nearly means:', options: ['Deceptive', 'Hesitant', 'Openly honest', 'Formal'], correctIndex: 2, explain: 'Candid describes speech or behavior that is truthful and straightforward.' },
+    { id: 'c9', q: '"Resilient" most nearly means:', options: ['Able to recover quickly from difficulty', 'Easily broken', 'Extremely heavy', 'Quick to anger'], correctIndex: 0, explain: 'Resilient describes the capacity to withstand or recover from challenges.' },
+    { id: 'c10', q: 'Most concise revision of: "At this point in time, the committee has not yet reached a decision."', options: ['At this point in time, no decision has been reached by the committee.', 'The committee, at this point in time, has not reached a decision.', 'Up until this point in time, the committee has not decided.', 'The committee has not yet decided.'], correctIndex: 3, explain: '"At this point in time" is wordy filler; "has not yet decided" says the same thing concisely.' },
+    { id: 'c11', q: '"Skeptical" most nearly means:', options: ['Enthusiastic', 'Doubtful', 'Confused', 'Grateful'], correctIndex: 1, explain: 'Skeptical describes a tendency to doubt or question claims.' },
+    { id: 'c12', q: 'Best transition: "The experiment produced inconsistent results. ___, the researchers redesigned the procedure."', options: ['For instance', 'Similarly', 'Consequently', 'Likewise'], correctIndex: 2, explain: 'Redesigning the procedure is a direct consequence of the inconsistent results.' },
+    { id: 'c13', q: '"Superfluous" most nearly means:', options: ['Unnecessary; more than needed', 'Essential', 'Scarce', 'Dangerous'], correctIndex: 0, explain: 'Superfluous describes something extra or unneeded beyond what is required.' },
+    { id: 'c14', q: 'Most concise revision of: "The reason why the bridge collapsed was because of corrosion."', options: ['The reason the bridge collapsed was due to corrosion occurring.', 'Because of the fact of corrosion, the bridge collapsed.', 'The bridge collapsed because of corrosion that happened.', 'The bridge collapsed because of corrosion.'], correctIndex: 3, explain: '"The reason why... was because" is redundant; stating the cause directly is more concise.' },
+    { id: 'c15', q: '"Benevolent" most nearly means:', options: ['Cruel', 'Kind and generous', 'Indifferent', 'Cautious'], correctIndex: 1, explain: 'Benevolent describes a disposition to do good and show kindness toward others.' },
+    { id: 'c16', q: 'Best transition: "The data supported the hypothesis. ___, the team published their findings."', options: ['As a result', 'Nevertheless', 'On the other hand', 'In contrast'], correctIndex: 0, explain: 'Publishing the findings follows directly from the supportive data, so a cause-effect transition fits.' },
+    { id: 'c17', q: '"Novel" (as in "a novel approach to the problem") most nearly means:', options: ['Fictional', 'Outdated', 'New and original', 'Complicated'], correctIndex: 2, explain: 'In this context, "novel" describes something new or original, not a work of fiction.' },
   ]},
   { id: 'sat-data', exam: 'SAT', title: 'Problem Solving & Data', cards: [
     { id: 'c1', q: 'A dataset has a mean of 50. If every value increases by 5, the new mean is:', options: ['55', '50', '45', '5'], correctIndex: 0, explain: 'Shifting every value by a constant shifts the mean by that same constant.' },
@@ -512,6 +544,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'A survey of 200 students found 120 prefer online classes. What percent prefer online?', options: ['60%', '40%', '120%', '20%'], correctIndex: 0, explain: '120/200 = 0.60 = 60%.' },
     { id: 'c6', q: 'What is the median of {3, 7, 9, 12, 15}?', options: ['9', '7', '12', '9.2'], correctIndex: 0, explain: 'With 5 values in order, the median is the middle one: 9.' },
     { id: 'c7', q: 'A line with slope 0 is:', options: ['Horizontal', 'Vertical', 'Undefined', 'Diagonal'], correctIndex: 0, explain: 'A slope of 0 means no rise over run &mdash; a flat, horizontal line.' },
+    { id: 'c8', q: 'A data set has a range of 20 and a minimum of 5. What is the maximum?', options: ['15', '25', '20', '30'], correctIndex: 1, explain: 'Range = max &minus; min, so max = range + min = 20 + 5 = 25.' },
+    { id: 'c9', q: 'A jar has 4 red and 6 green marbles. Two are drawn without replacement. What is P(both red)?', options: ['4/10', '3/9', '4/9', '2/15'], correctIndex: 3, explain: 'P(first red) = 4/10, then P(second red) = 3/9; multiply: (4/10)(3/9) = 2/15.' },
+    { id: 'c10', q: 'A price increases from $80 to $100. What is the percent increase?', options: ['25%', '20%', '80%', '125%'], correctIndex: 0, explain: 'The increase of $20 over the original $80 gives 20/80 = 0.25 = 25%.' },
+    { id: 'c11', q: 'A two-way table shows 30 of 50 juniors and 40 of 50 seniors passed an exam. Which class had the higher pass rate?', options: ['Juniors, since 30 is less than 40', 'Seniors, since 40/50 is greater than 30/50', 'They are equal', 'Cannot be determined'], correctIndex: 1, explain: 'Juniors passed at 60% (30/50); seniors passed at 80% (40/50), so seniors had the higher rate.' },
+    { id: 'c12', q: 'A line of best fit has a slope of 2.5 relating hours studied (x) to points scored (y). This slope means:', options: ['Each additional point scored adds 2.5 study hours', 'Score decreases by 2.5 for each hour studied', 'Each additional hour studied is associated with about 2.5 more points', 'There is no relationship between the variables'], correctIndex: 2, explain: 'The slope of a line of best fit gives the predicted change in y per one-unit increase in x.' },
+    { id: 'c13', q: 'A class of 20 students has an average score of 75. A class of 30 students has an average of 85. What is the combined average?', options: ['80', '81', '82', '83'], correctIndex: 1, explain: 'Weighted average = (20&times;75 + 30&times;85) / 50 = 4050/50 = 81.' },
+    { id: 'c14', q: 'A map has a scale of 1 inch = 25 miles. Two cities are 3.5 inches apart on the map. How far apart are they in miles?', options: ['87.5 miles', '75 miles', '82.5 miles', '90 miles'], correctIndex: 0, explain: 'Multiply the map distance by the scale: 3.5 &times; 25 = 87.5 miles.' },
+    { id: 'c15', q: 'A box plot shows Q1 = 10 and Q3 = 22. What is the interquartile range (IQR)?', options: ['22', '10', '32', '12'], correctIndex: 3, explain: 'IQR = Q3 &minus; Q1 = 22 &minus; 10 = 12.' },
+    { id: 'c16', q: 'A quantity that grows by a fixed percentage each year is best modeled by:', options: ['A linear function', 'A quadratic function', 'An exponential function', 'A constant function'], correctIndex: 2, explain: 'Growth by a fixed percent each period compounds, which is the hallmark of exponential growth.' },
+    { id: 'c17', q: 'In a sample of 150 voters, 90 support a proposal. If the full population is 6,000 voters, about how many support it?', options: ['3200', '3600', '4000', '2700'], correctIndex: 1, explain: 'The sample rate 90/150 = 60% applied to the population: 0.60 &times; 6,000 = 3,600.' },
   ]},
   { id: 'act-science', exam: 'ACT', title: 'Science Reasoning (Optional)', cards: [
     { id: 'c1', q: 'A graph shows temperature rising linearly from 20&deg;C at t=0 to 50&deg;C at t=6hr. What is the rate?', options: ['5&deg;C/hr', '30&deg;C/hr', '3&deg;C/hr', '10&deg;C/hr'], correctIndex: 0, explain: 'Change in temp (30&deg;C) over change in time (6hr) = 5&deg;C per hour.' },
@@ -520,6 +562,16 @@ const STUDY_DECKS = [
     { id: 'c4', q: 'A control group shows no change while the experimental group shows increased growth. This suggests the tested variable:', options: ['Had an effect, since the experimental group differed from the control', 'Had no effect', 'Was not actually tested', 'Should be removed from the study'], correctIndex: 0, explain: 'The control isolates the baseline; a difference from it points to the variable\'s effect.' },
     { id: 'c5', q: 'A data table shows pressure increasing as volume decreases at constant temperature. This best illustrates:', options: ['An inverse relationship between pressure and volume', 'A direct relationship', 'No relationship', 'A relationship that depends on color'], correctIndex: 0, explain: 'As one variable goes up while the other goes down, that is an inverse (negative) relationship.' },
     { id: 'c6', q: 'In a well-designed experiment, only one variable should be changed at a time so that:', options: ['Any observed effect can be attributed to that variable alone', 'The experiment runs faster', 'The data table looks simpler', 'The control group can be skipped'], correctIndex: 0, explain: 'Changing multiple variables at once makes it impossible to isolate which one caused an effect.' },
+    { id: 'c7', q: 'In an experiment on plant growth, the researcher varies the amount of water given. Amount of water is the:', options: ['Dependent variable', 'Control', 'Independent variable', 'Constant'], correctIndex: 2, explain: 'The independent variable is what the researcher deliberately changes between trials.' },
+    { id: 'c8', q: 'A data table lists enzyme activity at 10&deg;C, 20&deg;C, and 40&deg;C, but not at 30&deg;C. Estimating the value at 30&deg;C from the surrounding data points is an example of:', options: ['Interpolation', 'Extrapolation', 'Random sampling', 'Replication'], correctIndex: 0, explain: 'Estimating a value between two measured data points is interpolation.' },
+    { id: 'c9', q: 'Using the same trend to predict a value at 100&deg;C, well beyond the highest tested temperature, is an example of:', options: ['Interpolation', 'A controlled variable', 'A null result', 'Extrapolation'], correctIndex: 3, explain: 'Predicting beyond the range of collected data is extrapolation, which carries more risk of error than interpolation.' },
+    { id: 'c10', q: 'A hypothesis predicts that reaction speed increases with temperature. The data show speed increasing steadily from 10&deg;C to 50&deg;C. The data are:', options: ['Inconsistent with the hypothesis', 'Consistent with the hypothesis', 'Unrelated to the hypothesis', 'Proof the hypothesis is a law'], correctIndex: 1, explain: 'The observed trend matches the prediction, so the data support (are consistent with) the hypothesis.' },
+    { id: 'c11', q: 'Two students measure the same object\'s length as 5.2 cm and 5.21 cm using different rulers. The second measurement is more precise because it:', options: ['Was taken second', 'Was taken by a different student', 'Reports an additional digit of certainty', 'Used a larger object'], correctIndex: 2, explain: 'More decimal places (more significant figures) generally indicate a more precise measurement.' },
+    { id: 'c12', q: 'The first step in the scientific method after making an observation is typically to:', options: ['Form a testable hypothesis', 'Publish the results', 'Run statistical analysis', 'Repeat the experiment ten times'], correctIndex: 0, explain: 'After observing a phenomenon, scientists propose a testable explanation, or hypothesis, before designing experiments.' },
+    { id: 'c13', q: 'Two scientists interpret the same fossil data differently: Scientist 1 says it supports rapid change; Scientist 2 says it supports gradual change. Both scientists are most likely using:', options: ['Different data sets entirely', 'No evidence at all', 'A single agreed-upon theory', 'The same evidence but different interpretations or assumptions'], correctIndex: 3, explain: 'Conflicting-viewpoint passages typically show scientists drawing different conclusions from identical evidence.' },
+    { id: 'c14', q: 'A graph shows two lines: one for oxygen uptake and one for carbon dioxide output, both rising together as exercise intensity increases. This pattern suggests the two variables are:', options: ['Inversely related', 'Positively related', 'Unrelated', 'Related only at low intensity'], correctIndex: 1, explain: 'Both variables increasing together across the graph indicates a positive (direct) relationship.' },
+    { id: 'c15', q: 'A study reporting a relationship between ice cream sales and drowning rates most likely reflects:', options: ['A confounding variable (like hot weather) affecting both', 'A direct causal link between the two', 'Measurement error only', 'No possible explanation'], correctIndex: 0, explain: 'A third factor, such as warm weather increasing both swimming and ice cream sales, can create a correlation without causation.' },
+    { id: 'c16', q: 'In a multi-trial experiment, averaging the results of several trials instead of relying on just one trial mainly helps to:', options: ['Eliminate the need for a control group', 'Increase the independent variable\'s effect', 'Reduce the impact of random measurement error', 'Make the hypothesis true'], correctIndex: 2, explain: 'Averaging multiple trials smooths out random variation, giving a more reliable estimate of the true effect.' },
   ]},
   { id: 'act-english', exam: 'ACT', title: 'Grammar & Usage', cards: [
     { id: 'c1', q: '"Neither the teacher nor the students ___ ready."', options: ['were', 'was', 'is', 'be'], correctIndex: 0, explain: 'With "neither/nor," the verb agrees with the nearer subject &mdash; "students" is plural, so "were."' },
@@ -528,6 +580,16 @@ const STUDY_DECKS = [
     { id: 'c4', q: 'Choose correctly: "___ important to check the label."', options: ["It's", 'Its', 'Its\'', 'It'], correctIndex: 0, explain: '"It\'s" is the contraction of "it is," which fits here.' },
     { id: 'c5', q: 'Which is correct?', options: ['Between you and me, the plan will work.', 'Between you and I, the plan will work.', 'Between you and myself, the plan will work.', 'Between I and you, the plan will work.'], correctIndex: 0, explain: 'A preposition like "between" takes an object pronoun: "me," not "I."' },
     { id: 'c6', q: 'Which sentence is correctly parallel?', options: ['She likes hiking, swimming, and biking.', 'She likes hiking, to swim, and biking.', 'She likes to hike, swimming, and bike.', 'She likes hiking, swims, and to bike.'], correctIndex: 0, explain: 'Parallel structure keeps all items in a list in the same grammatical form &mdash; here, all gerunds.' },
+    { id: 'c7', q: 'Which sentence corrects the run-on?: "The storm hit the coast, the power went out for hours."', options: ['The storm hit the coast the power went out for hours.', 'The storm hit the coast; the power went out for hours.', 'The storm hit the coast, and the power, it went out for hours.', 'The storm, hit the coast the power went out for hours.'], correctIndex: 1, explain: 'A semicolon correctly joins the two independent clauses without a conjunction.' },
+    { id: 'c8', q: 'Choose the correctly punctuated sentence with a nonessential clause:', options: ['My brother who lives in Denver is visiting.', 'My brother, who lives in Denver is visiting.', 'My brother who lives in Denver, is visiting.', 'My brother, who lives in Denver, is visiting.'], correctIndex: 3, explain: 'A nonessential clause describing "my brother" is set off by commas on both sides.' },
+    { id: 'c9', q: 'Correct possessive for a single dog\'s toys:', options: ["The dog's toys were scattered.", "The dogs' toys were scattered.", "The dog's' toys were scattered.", "The dogs toys were scattered."], correctIndex: 0, explain: 'For one dog, add apostrophe + s: "dog\'s."' },
+    { id: 'c10', q: 'Which sentence contains a dangling modifier?', options: ['Running down the street, Maria dropped her keys.', 'Maria, running down the street, dropped her keys.', 'Running down the street, her keys fell from Maria\'s hand.', 'While running down the street, Maria dropped her keys.'], correctIndex: 2, explain: 'The modifier "running down the street" illogically describes "her keys" instead of Maria, who was actually running.' },
+    { id: 'c11', q: '"___ did you give the message to?"', options: ['Whom', 'Who', 'Whomever', "Who's"], correctIndex: 0, explain: 'As the object of the preposition "to," the objective case "whom" is correct.' },
+    { id: 'c12', q: 'Choose the correct verb tense: "By the time we arrived, the movie ___ already started."', options: ['has', 'have', 'will have', 'had'], correctIndex: 3, explain: 'An action completed before another past action uses the past perfect: "had started."' },
+    { id: 'c13', q: 'Which is correct?: "The committee ___ its decision this morning."', options: ['announce', 'announces', 'announcing', 'have announced'], correctIndex: 1, explain: '"Committee" is a singular collective noun, so it takes the singular verb "announces."' },
+    { id: 'c14', q: 'Choose correctly: "The heat wave will ___ crop yields this summer."', options: ['effect', 'effected', 'affect', 'affection'], correctIndex: 2, explain: '"Affect" is the verb meaning to influence; "effect" is usually the noun for a result.' },
+    { id: 'c15', q: 'Which sentence has correct pronoun-antecedent agreement?', options: ['Each of the students brought their own laptop.', 'Each of the students brought our own laptop.', 'Each of the students brought its own laptop.', 'Each of the students brought his or her own laptop.'], correctIndex: 3, explain: '"Each" is singular, so the pronoun referring to it should be singular: "his or her."' },
+    { id: 'c16', q: 'Most effective revision for redundancy: "The two twins were born on the same exact day."', options: ['The twins were born on the same day.', 'The two twins were born on the same exact day.', 'The twins were both born on the same exact day.', 'No revision needed.'], correctIndex: 0, explain: '"Two twins" and "same exact" are redundant; "twins" already implies two, and "same day" needs no "exact."' },
   ]},
   { id: 'act-math', exam: 'ACT', title: 'Math: Algebra & Functions', cards: [
     { id: 'c1', q: 'Solve: 3(x &minus; 2) = 15', options: ['x = 7', 'x = 5', 'x = 9', 'x = 4'], correctIndex: 0, explain: '3x &minus; 6 = 15, so 3x = 21, x = 7.' },
@@ -537,6 +599,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'Solve: (x &minus; 3)(x + 5) = 0', options: ['x = 3 or x = &minus;5', 'x = &minus;3 or x = 5', 'x = 3 or x = 5', 'x = 0 only'], correctIndex: 0, explain: 'Set each factor to zero: x &minus; 3 = 0 or x + 5 = 0.' },
     { id: 'c6', q: 'If f(x) = 2x &minus; 5, what is f&#8315;&#185;(x)?', options: ['(x + 5) / 2', '(x &minus; 5) / 2', '2x + 5', '(x + 2) / 5'], correctIndex: 0, explain: 'Swap x and y then solve: x = 2y &minus; 5 &rarr; y = (x+5)/2.' },
     { id: 'c7', q: 'Simplify: (4x&#179;) / (2x)', options: ['2x&#178;', '2x&#179;', '4x&#178;', '8x&#178;'], correctIndex: 0, explain: 'Divide coefficients (4/2=2) and subtract exponents (3-1=2): 2x&#178;.' },
+    { id: 'c8', q: 'Solve the system: 2x + y = 11, x &minus; y = 1. Find y.', options: ['y = 3', 'y = 1', 'y = 2', 'y = 4'], correctIndex: 0, explain: 'Substituting x = y + 1 into the first equation: 2(y+1) + y = 11, so 3y = 9, y = 3.' },
+    { id: 'c9', q: 'Use the quadratic formula to solve x&#178; + 2x &minus; 8 = 0.', options: ['x = 2 or x = &minus;4', 'x = &minus;2 or x = 4', 'x = 8 or x = &minus;1', 'x = &minus;8 or x = 1'], correctIndex: 1, explain: 'This factors as (x+4)(x&minus;2) = 0, giving x = &minus;4 or x = 2.' },
+    { id: 'c10', q: 'If f(x) = x&#178; and g(x) = x + 1, what is f(g(3))?', options: ['9', '12', '16', '25'], correctIndex: 2, explain: 'g(3) = 3 + 1 = 4, then f(4) = 4&#178; = 16.' },
+    { id: 'c11', q: 'Solve |2x + 1| = 9.', options: ['x = &minus;4 or x = 5', 'x = 4 or x = 5', 'x = &minus;4 or x = &minus;5', 'x = 4 or x = &minus;5'], correctIndex: 3, explain: '2x + 1 = 9 gives x = 4; 2x + 1 = &minus;9 gives x = &minus;5.' },
+    { id: 'c12', q: 'Simplify (x&#178; &minus; 9)/(x &minus; 3).', options: ['x + 3', 'x &minus; 3', 'x&#178; &minus; 3', 'x + 9'], correctIndex: 0, explain: 'x&#178; &minus; 9 factors as (x+3)(x&minus;3); the (x&minus;3) terms cancel, leaving x + 3.' },
+    { id: 'c13', q: 'Find the distance between points (1, 1) and (4, 5).', options: ['4', '5', '6', '7'], correctIndex: 1, explain: 'Distance = &radic;((4&minus;1)&#178; + (5&minus;1)&#178;) = &radic;(9 + 16) = &radic;25 = 5.' },
+    { id: 'c14', q: 'If 3 raised to the power x equals 81, what is x?', options: ['3', '5', '4', '6'], correctIndex: 2, explain: 'Since 3&#8308; = 81, x = 4.' },
+    { id: 'c15', q: 'A piecewise function is defined as f(x) = x + 1 if x &lt; 2, and f(x) = 2x if x &ge; 2. What is f(2)?', options: ['3', '5', '6', '4'], correctIndex: 3, explain: 'Since 2 &ge; 2, use f(x) = 2x: f(2) = 2(2) = 4.' },
+    { id: 'c16', q: 'y varies inversely with x. If y = 4 when x = 5, what is y when x = 10?', options: ['2', '1', '8', '10'], correctIndex: 0, explain: 'The constant is k = 4 &times; 5 = 20, so y = 20/10 = 2.' },
+    { id: 'c17', q: 'Expand (x + 4)&#178;.', options: ['x&#178; + 16', 'x&#178; + 8x + 16', 'x&#178; + 4x + 16', 'x&#178; + 8x + 8'], correctIndex: 1, explain: '(x+4)&#178; = x&#178; + 2(4)x + 4&#178; = x&#178; + 8x + 16.' },
   ]},
   { id: 'gmat-quant', exam: 'GMAT', title: 'Quant Word Problems', cards: [
     { id: 'c1', q: 'A store marks up cost 40%, then discounts the marked price 25%. Net effect on the original cost?', options: ['5% increase', '15% decrease', 'No change', '10% increase'], correctIndex: 0, explain: '1.40 &times; 0.75 = 1.05 &mdash; a net 5% increase over the original cost.' },
@@ -546,6 +618,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'A car travels 240 miles in 4 hours. At the same rate, how long for 360 miles?', options: ['6 hours', '5 hours', '8 hours', '7.5 hours'], correctIndex: 0, explain: 'Rate = 60 mph. 360 / 60 = 6 hours.' },
     { id: 'c6', q: 'If x is 20% more than y, what percent of x is y (rounded)?', options: ['83.3%', '80%', '120%', '90%'], correctIndex: 0, explain: 'x = 1.2y, so y = x / 1.2 &asymp; 0.833x, about 83.3%.' },
     { id: 'c7', q: 'A mixture is 30% acid. How many liters of pure acid must be added to 10 liters of it to make a 50% acid mixture?', options: ['4 liters', '2 liters', '5 liters', '6 liters'], correctIndex: 0, explain: '(3 + x) / (10 + x) = 0.5 &rarr; 3 + x = 5 + 0.5x &rarr; x = 4.' },
+    { id: 'c8', q: 'A sum of $2,000 is invested at 10% simple annual interest. What is the interest earned after 3 years?', options: ['$600', '$200', '$400', '$800'], correctIndex: 0, explain: 'Simple interest = Principal &times; rate &times; time = 2000 &times; 0.10 &times; 3 = $600.' },
+    { id: 'c9', q: 'In how many ways can 3 distinct books be arranged on a shelf?', options: ['3', '6', '9', '12'], correctIndex: 1, explain: 'The number of arrangements of 3 distinct items is 3! = 3 &times; 2 &times; 1 = 6.' },
+    { id: 'c10', q: 'Two trains start 300 miles apart and move toward each other at 50 mph and 70 mph. How long until they meet?', options: ['2 hours', '3 hours', '2.5 hours', '5 hours'], correctIndex: 2, explain: 'Their combined closing speed is 120 mph, so time = 300/120 = 2.5 hours.' },
+    { id: 'c11', q: 'The sum of two consecutive integers is 45. What is the larger integer?', options: ['21', '22', '24', '23'], correctIndex: 3, explain: 'Let the integers be n and n+1: 2n + 1 = 45, so n = 22 and the larger is 23.' },
+    { id: 'c12', q: 'A machine produces defective parts at a rate of 1 in 25. In a batch of 500 parts, about how many are defective?', options: ['20', '15', '25', '30'], correctIndex: 0, explain: '500 &divide; 25 = 20 expected defective parts.' },
+    { id: 'c13', q: 'What is the greatest common divisor of 36 and 48?', options: ['6', '12', '8', '24'], correctIndex: 1, explain: 'The largest number dividing both 36 and 48 evenly is 12.' },
+    { id: 'c14', q: 'A company\'s cost to produce an item is $40, and it sells for $55. What is the profit as a percent of cost?', options: ['27.5%', '40%', '37.5%', '55%'], correctIndex: 2, explain: 'Profit is $15 on a $40 cost: 15/40 = 0.375 = 37.5%.' },
+    { id: 'c15', q: 'Simplify: (x&#8308;)(x&#178;) / x&#179;', options: ['x&#178;', 'x&#8308;', 'x&#8309;', 'x&#179;'], correctIndex: 3, explain: 'Add exponents in the numerator (4+2=6) then subtract the denominator\'s exponent (6&minus;3=3): x&#179;.' },
+    { id: 'c16', q: 'In an arithmetic sequence, the first term is 5 and the common difference is 4. What is the 10th term?', options: ['41', '37', '45', '49'], correctIndex: 0, explain: 'The nth term is a&#8321; + (n&minus;1)d = 5 + 9(4) = 41.' },
+    { id: 'c17', q: 'When a number is divided by 7, the remainder is 3. What is the remainder when twice that number is divided by 7?', options: ['3', '6', '1', '0'], correctIndex: 1, explain: 'If n = 7k + 3, then 2n = 14k + 6, and 6 is already less than 7, so the remainder is 6.' },
   ]},
   { id: 'gmat-verbal', exam: 'GMAT', title: 'Critical Reasoning', cards: [
     { id: 'c1', q: '"Sales rose after the ad campaign, so the campaign caused the rise." This argument\'s main weakness:', options: ['It confuses correlation with causation', 'It uses too much data', 'It is too specific', 'It lacks a conclusion'], correctIndex: 0, explain: 'Other factors could explain the sales increase &mdash; the argument assumes causation from mere correlation.' },
@@ -554,6 +636,16 @@ const STUDY_DECKS = [
     { id: 'c4', q: '"Most successful startups have young founders, so youth causes startup success." The main flaw:', options: ['It treats a correlation as causation, ignoring other factors', 'It uses too small a sample', 'It contradicts itself', 'It lacks any evidence at all'], correctIndex: 0, explain: 'Founder age might just correlate with other success factors like risk tolerance or timing, not cause success.' },
     { id: 'c5', q: 'Which best weakens: "Company X\'s new ad campaign caused a 20% sales increase"?', options: ['Industry-wide sales rose 25% in the same period', 'The campaign used bright colors', 'The company hired a new CEO last year', 'Competitors also advertise'], correctIndex: 0, explain: 'If the whole industry grew even faster without the campaign, the campaign likely was not the cause.' },
     { id: 'c6', q: 'An argument based on a small, unrepresentative sample commits which flaw?', options: ['Hasty generalization', 'Circular reasoning', 'False dilemma', 'Appeal to authority'], correctIndex: 0, explain: 'Drawing a broad conclusion from too little (or biased) evidence is a hasty generalization.' },
+    { id: 'c7', q: '"If the plan is approved, costs will fall. The plan was approved. Therefore costs will fall." This reasoning is:', options: ['A logical flaw called begging the question', 'A valid conditional argument (affirming the antecedent)', 'A hasty generalization', 'An ad hominem attack'], correctIndex: 1, explain: 'Affirming the antecedent of a true conditional is logically valid reasoning.' },
+    { id: 'c8', q: 'Sales of umbrellas rise whenever sales of raincoats rise. Which best explains this without one causing the other?', options: ['Umbrella sales directly cause raincoat sales', 'Raincoat sales directly cause umbrella sales', 'Both increase because of rainy weather, a common cause', 'The two products are sold in different stores'], correctIndex: 2, explain: 'A third factor (rain) can drive both variables up together without either causing the other &mdash; a common cause.' },
+    { id: 'c9', q: '"Either we raise taxes or the school will close." This argument commits which flaw if other options (like cutting other costs) exist?', options: ['A hasty generalization', 'An appeal to authority', 'A valid disjunction', 'A false dilemma'], correctIndex: 3, explain: 'Presenting only two options when more exist is a false dilemma.' },
+    { id: 'c10', q: '"This policy is good because it is good for the economy, and we know it\'s good for the economy because the policy is good." This argument is:', options: ['Circular, since the conclusion is used to support itself', 'A strong analogy', 'A sampling-bias flaw', 'A valid deduction'], correctIndex: 0, explain: 'The argument\'s support and conclusion restate each other, which is circular reasoning.' },
+    { id: 'c11', q: 'A survey of a company\'s own employees found 90% support the CEO. Which flaw does this best illustrate if used to claim "most people support the CEO"?', options: ['Appeal to emotion', 'Selection bias, since employees aren\'t a representative sample of "most people"', 'False dilemma', 'Equivocation'], correctIndex: 1, explain: 'Surveying only employees, who have an interest in supporting their employer, is not representative of the general population.' },
+    { id: 'c12', q: 'Which question would be most useful to evaluate the argument "Exercise improves memory because athletes score higher on memory tests"?', options: ['What color jerseys the athletes wore', 'How many athletes were surveyed', 'Whether athletes differ from non-athletes in other ways that affect memory', 'Where the study was conducted'], correctIndex: 2, explain: 'Evaluating whether another factor (e.g. age, sleep, diet) explains the memory difference is key to testing the causal claim.' },
+    { id: 'c13', q: 'A city\'s crime rate fell the same year a new mayor took office. Which best weakens the claim that the mayor\'s policies caused the drop?', options: ['The mayor was popular with voters', 'The mayor had served on the city council before', 'The city\'s population grew that year', 'Crime rates fell nationwide that year, including in cities with no policy change'], correctIndex: 3, explain: 'If crime fell everywhere regardless of local policy, the mayor\'s specific policies are less likely to be the cause.' },
+    { id: 'c14', q: '"Everyone who disagrees with this policy simply doesn\'t understand economics." This statement is an example of:', options: ['Dismissing opposing views rather than addressing their substance', 'A strong statistical argument', 'A valid inference', 'An appeal to a credible authority'], correctIndex: 0, explain: 'The claim rejects all disagreement by assuming its own correctness rather than engaging with the actual arguments.' },
+    { id: 'c15', q: 'A word used in two different senses within the same argument (e.g., "bank" meaning a riverbank in the premise but a financial bank in the conclusion) illustrates:', options: ['Circular reasoning', 'Equivocation', 'A false dilemma', 'A valid syllogism'], correctIndex: 1, explain: 'Equivocation occurs when a term shifts meaning between parts of an argument, making the logic invalid.' },
+    { id: 'c16', q: 'A paradox/explain question asks you to find the choice that:', options: ['Restates the passage\'s conclusion', 'Weakens the argument\'s main claim', 'Resolves an apparent contradiction between two facts in the passage', 'Attacks the author directly'], correctIndex: 2, explain: '"Explain the discrepancy" questions require an answer that reconciles two facts that seem to conflict.' },
   ]},
   { id: 'gmat-data', exam: 'GMAT', title: 'Data Insights', cards: [
     { id: 'c1', q: 'Quarterly revenue ($k): Q1=100, Q2=120, Q3=90, Q4=150. What is the percent change from Q3 to Q4?', options: ['+66.7%', '+50%', '+60%', '+40%'], correctIndex: 0, explain: '(150 &minus; 90) / 90 = 0.667, a 66.7% increase.' },
@@ -563,6 +655,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'A pie chart shows market share: A=40%, B=35%, C=25% of a $2,000,000 market. What is B\'s share in dollars?', options: ['$700,000', '$800,000', '$650,000', '$500,000'], correctIndex: 0, explain: '35% of $2,000,000 = 0.35 &times; 2,000,000 = $700,000.' },
     { id: 'c6', q: 'Two variables show a correlation coefficient of r = &minus;0.9. This means:', options: ['A strong negative linear relationship', 'A strong positive linear relationship', 'No relationship', 'A weak relationship'], correctIndex: 0, explain: 'r close to &minus;1 signals a strong linear relationship where one variable rises as the other falls.' },
     { id: 'c7', q: 'A box plot\'s median line sits closer to the bottom of the box than the top. This suggests the middle 50% of the data is:', options: ['Skewed toward lower values', 'Perfectly symmetric', 'Skewed toward higher values', 'Impossible to interpret'], correctIndex: 0, explain: 'A median pulled toward one edge of the box indicates the data bunches more on that side.' },
+    { id: 'c8', q: 'Data sufficiency: (1) y = 2x  (2) x = 3. Is y determined?', options: ['Only when both statements are used together', 'Statement 1 alone is sufficient', 'Statement 2 alone is sufficient', 'Neither is sufficient even together'], correctIndex: 0, explain: 'Statement 1 alone leaves x unknown, and statement 2 alone doesn\'t relate x to y; together, y = 2(3) = 6.' },
+    { id: 'c9', q: 'A Venn diagram shows 50 people like coffee, 40 like tea, and 20 like both. How many like at least one?', options: ['90', '70', '110', '50'], correctIndex: 1, explain: 'Total = coffee + tea &minus; both = 50 + 40 &minus; 20 = 70.' },
+    { id: 'c10', q: 'A table shows quiz scores by class: Class A (10 students, avg 80), Class B (15 students, avg 90). What is the combined average?', options: ['85', '87', '86', '88'], correctIndex: 2, explain: 'Weighted average = (10&times;80 + 15&times;90) / 25 = 2150/25 = 86.' },
+    { id: 'c11', q: 'A line graph shows monthly revenue rising steadily from January through June, then dropping sharply in July. The most likely reason to investigate first is:', options: ['An error in the January data', 'The company\'s founding date', 'The total number of months shown', 'A seasonal or one-time factor affecting July specifically'], correctIndex: 3, explain: 'A sudden break from an otherwise steady trend usually points to a specific event or seasonal effect in that period.' },
+    { id: 'c12', q: 'Data set A has a standard deviation of 2; data set B (same mean) has a standard deviation of 8. Which statement is true?', options: ['Data set A\'s values cluster more tightly around the mean', 'Data set B\'s values cluster more tightly around the mean', 'Both data sets are identical', 'Standard deviation says nothing about spread'], correctIndex: 0, explain: 'A smaller standard deviation means the values are closer to the mean on average.' },
+    { id: 'c13', q: 'Data sufficiency: (1) x &gt; 5  (2) x &lt; 10. Is x = 7?', options: ['Statement 1 alone is sufficient', 'Neither statement, even together, is sufficient to determine a single value of x', 'Statement 2 alone is sufficient', 'Both together are sufficient'], correctIndex: 1, explain: 'Many values between 5 and 10 satisfy both statements, so x is not pinned down to exactly 7.' },
+    { id: 'c14', q: 'Two sources report different totals for the same quarter\'s sales: Source A says $4.2M, Source B (audited, official) says $4.5M. For a financial report, you should generally:', options: ['Average the two sources', 'Use Source A since it was reported first', 'Use Source B, the audited and official figure', 'Discard both sources'], correctIndex: 2, explain: 'An audited, official figure is more reliable than an unaudited or preliminary one.' },
+    { id: 'c15', q: 'A bar chart shows four regions\' sales as percentages of a $500,000 total: North 20%, South 30%, East 25%, West 25%. What is South\'s sales in dollars?', options: ['$100,000', '$125,000', '$175,000', '$150,000'], correctIndex: 3, explain: '30% of $500,000 = 0.30 &times; 500,000 = $150,000.' },
+    { id: 'c16', q: 'A scatterplot shows no clear pattern between shoe size and test scores (r &asymp; 0). This means:', options: ['There is little to no linear relationship between the variables', 'There is a strong positive relationship', 'There is a strong negative relationship', 'One variable causes the other'], correctIndex: 0, explain: 'An r value near 0 indicates essentially no linear association between the variables.' },
+    { id: 'c17', q: 'A company\'s data table shows profit margin fell from 18% to 15% even though revenue grew. The most likely explanation to investigate is:', options: ['Revenue did not actually grow', 'Costs grew faster than revenue', 'Profit margin is unrelated to costs', 'The table contains no useful information'], correctIndex: 1, explain: 'If margin falls while revenue rises, costs must be eating up a larger share of that revenue.' },
   ]},
   { id: 'lsat-lr', exam: 'LSAT', title: 'Logical Reasoning', cards: [
     { id: 'c1', q: '"All lawyers are detail-oriented. Maria is detail-oriented. Therefore Maria is a lawyer." This is:', options: ['Affirming the consequent (a logical flaw)', 'A valid deduction', 'An appeal to authority', 'A sound syllogism'], correctIndex: 0, explain: 'Being detail-oriented doesn\'t make someone a lawyer &mdash; the argument reverses the original conditional.' },
@@ -572,6 +674,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: '"Some cats are black. Some black things are heavy. Therefore some cats are heavy." This reasoning is:', options: ['Invalid &mdash; the middle term does not guarantee overlap', 'A valid deduction', 'Circular reasoning', 'An appeal to authority'], correctIndex: 0, explain: 'The "black" cats and "black" heavy things might not be the same black things &mdash; the link is not guaranteed.' },
     { id: 'c6', q: 'An argument that attacks the person making a claim rather than the claim itself commits:', options: ['An ad hominem fallacy', 'A straw man fallacy', 'A slippery slope', 'A false analogy'], correctIndex: 0, explain: 'Ad hominem means attacking the arguer instead of addressing the argument.' },
     { id: 'c7', q: '"If the alarm sounds, evacuate. The alarm did not sound. Therefore no one evacuated." This reasoning:', options: ['Denies the antecedent (a logical flaw)', 'Is a valid conditional argument', 'Affirms the consequent', 'Is a sound contrapositive'], correctIndex: 0, explain: 'Not-P does not logically guarantee not-Q; there could be other reasons to evacuate.' },
+    { id: 'c8', q: '"If you study, you will pass" means studying is:', options: ['A necessary condition for passing', 'A sufficient condition for passing', 'Both necessary and sufficient for passing', 'Unrelated to passing'], correctIndex: 1, explain: 'In "If P then Q," P is sufficient to guarantee Q, though not necessarily required for it.' },
+    { id: 'c9', q: '"You must submit the form to attend." This means submitting the form is:', options: ['A sufficient condition for attending', 'Irrelevant to attending', 'A necessary condition for attending', 'A contrapositive of attending'], correctIndex: 2, explain: '"Must" language establishes a necessary condition &mdash; without it, attending is impossible, though submitting alone may not guarantee attendance.' },
+    { id: 'c10', q: '"The new policy will reduce traffic because it worked in a similar city." Which best weakens this argument?', options: ['The policy is popular with voters', 'The policy was announced recently', 'Traffic has always been a problem in this city', 'The similar city differs in a key way, such as population density, that affected the result'], correctIndex: 3, explain: 'If the comparison city differs in a relevant respect, the analogy supporting the argument breaks down.' },
+    { id: 'c11', q: 'An argument uses a word to mean one thing in the premise and something different in the conclusion, without acknowledging the shift. This flaw is:', options: ['Equivocation', 'Circular reasoning', 'A false dilemma', 'A valid deduction'], correctIndex: 0, explain: 'Equivocation occurs when a term\'s meaning shifts between parts of an argument, undermining the logic.' },
+    { id: 'c12', q: '"This law is just because it was passed by a legitimate government, and we know the government is legitimate because it only passes just laws." This argument is:', options: ['A sound deduction', 'Circular, since its support and conclusion depend on each other', 'An appeal to authority', 'A sufficient assumption'], correctIndex: 1, explain: 'The argument\'s premise and conclusion depend on each other, which is a circular structure.' },
+    { id: 'c13', q: 'Parallel reasoning questions ask you to find an argument that:', options: ['Discusses the same subject matter', 'Reaches the same real-world conclusion', 'Shares the same logical structure as the original, regardless of topic', 'Uses the same specific words as the original'], correctIndex: 2, explain: 'Parallel reasoning matches the pattern of logic, not the subject matter or wording.' },
+    { id: 'c14', q: 'To test whether an assumption is truly necessary for an argument, the "negation test" asks:', options: ['If the assumption were true, would the conclusion follow automatically?', 'Is the assumption popular with most people?', 'Is the assumption stated explicitly in the passage?', 'If the assumption were false, would the argument fall apart?'], correctIndex: 3, explain: 'If negating the assumption destroys the argument\'s support for its conclusion, the assumption is necessary.' },
+    { id: 'c15', q: 'A "sufficient assumption" question asks you to find a statement that, if added to the premises, would:', options: ['Guarantee the conclusion follows logically', 'Merely make the conclusion more likely', 'Contradict one of the premises', 'Restate the conclusion word for word'], correctIndex: 0, explain: 'A sufficient assumption, combined with the stated premises, makes the conclusion logically certain.' },
+    { id: 'c16', q: '"All members of the board approved the merger, so the merger must be a good decision." This argument mistakes a necessary condition for:', options: ['A contrapositive', 'A sufficient one, assuming agreement guarantees quality', 'An analogy', 'A causal mechanism'], correctIndex: 1, explain: 'Board approval may be required for the merger to proceed, but that alone does not guarantee it is a good decision.' },
+    { id: 'c17', q: 'A "resolve the paradox" question requires an answer choice that:', options: ['Shows one of the facts is false', 'Weakens the stronger of the two facts', 'Explains how two seemingly conflicting facts can both be true', 'Restates both facts without explanation'], correctIndex: 2, explain: 'The correct answer reconciles the apparent conflict rather than denying either fact.' },
   ]},
   { id: 'lsat-rc', exam: 'LSAT', title: 'Reading Comprehension', cards: [
     { id: 'c1', q: 'A "primary purpose" question asks you to identify:', options: ["The author's main goal in writing the passage, not just one detail", 'The most surprising fact in the passage', 'The last sentence\'s topic', 'A minor example the author cites'], correctIndex: 0, explain: 'Primary purpose questions test whether you grasped the passage as a whole, not a single detail.' },
@@ -581,6 +693,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'A "function" question (e.g. "why does the author mention X in line 12?") asks about:', options: ['The role that detail plays in the passage\'s larger argument', 'Only the literal content of that detail', 'Whether the detail is true', 'The author\'s biography'], correctIndex: 0, explain: 'Function questions test purpose &mdash; why a detail is there, not just what it says.' },
     { id: 'c6', q: 'In Comparative Reading (two paired passages), a question about their relationship usually tests:', options: ['How the passages agree, disagree, or complement each other', 'Which passage was written first', 'Which passage is longer', 'The authors\' occupations'], correctIndex: 0, explain: 'Comparative Reading questions focus on the relationship between the two viewpoints.' },
     { id: 'c7', q: 'The best way to handle an RC question about an unfamiliar term is to:', options: ['Infer its meaning from context in the passage', 'Rely on outside knowledge of the term', 'Skip the question', 'Assume it means its most common dictionary definition'], correctIndex: 0, explain: 'LSAT passages define their own terms in context &mdash; use the passage, not outside knowledge.' },
+    { id: 'c8', q: 'A question asking about the passage\'s "organization" or structure tests whether you can:', options: ['Recall every supporting detail', 'Identify how the passage\'s parts relate to and build on each other', 'Define unfamiliar vocabulary', 'Determine the author\'s profession'], correctIndex: 1, explain: 'Structure questions test your grasp of how the passage\'s sections fit together, not isolated facts.' },
+    { id: 'c9', q: 'An "EXCEPT" question (e.g., "the passage suggests all of the following EXCEPT") is best approached by:', options: ['Picking the first answer that sounds correct', 'Assuming the correct answer is always the last choice', 'Finding the four answers that ARE supported, leaving the unsupported one', 'Skipping it, since EXCEPT questions are unsolvable'], correctIndex: 2, explain: 'Confirming the four supported choices isolates the one answer that the passage does not actually support.' },
+    { id: 'c10', q: 'The difference between a "main point" and a "primary purpose" question is that primary purpose asks about:', options: ['Nothing; the two are identical', 'Only the passage\'s first paragraph', 'The author\'s personal biography', 'The author\'s goal or intent in writing, while main point asks what is actually argued'], correctIndex: 3, explain: 'Primary purpose targets the author\'s intent (why they wrote it); main point targets the conclusion itself.' },
+    { id: 'c11', q: 'When a question cites a specific line number, the best strategy is to:', options: ['Reread several sentences around that line for context, not just the line itself', 'Answer based on the line alone, ignoring context', 'Skip to the next question', 'Assume the line states the main point'], correctIndex: 0, explain: 'Lines are rarely meaningful in isolation; surrounding context usually clarifies what is being tested.' },
+    { id: 'c12', q: 'When an author includes a specific counterexample or objection in a passage, it is usually meant to:', options: ['Prove the author\'s argument is wrong', 'Show the author has considered and addressed an alternative view', 'Confuse the reader deliberately', 'Replace the passage\'s main argument'], correctIndex: 1, explain: 'Acknowledging objections typically strengthens an argument by showing the author anticipated and addressed them.' },
+    { id: 'c13', q: 'Taking brief margin notes that summarize each paragraph\'s role (e.g. "background," "author\'s view," "counterargument") mainly helps you:', options: ['Memorize the passage word for word', 'Avoid reading the passage at all', 'Navigate back to relevant sections quickly when answering questions', 'Skip difficult questions entirely'], correctIndex: 2, explain: 'A paragraph-by-paragraph roadmap lets you locate the right section quickly instead of rereading the whole passage.' },
+    { id: 'c14', q: 'Answer choices containing extreme language (e.g. "always," "never," "completely") are often:', options: ['Always correct, since they sound confident', 'Irrelevant to tone questions', 'A sign the passage is scientific', 'Incorrect, since passages rarely support such absolute claims'], correctIndex: 3, explain: 'LSAT passages are usually nuanced, so absolute wording in an answer choice often overstates what the text supports.' },
+    { id: 'c15', q: 'Effective time management on the RC section often means:', options: ['Spending more time reading carefully upfront to answer questions faster', 'Reading as fast as possible and skipping comprehension', 'Answering questions before reading the passage', 'Spending equal time on every passage regardless of difficulty'], correctIndex: 0, explain: 'A solid first read builds a mental map that speeds up answering every question that follows.' },
+    { id: 'c16', q: 'When a question asks what the author "would most likely agree with," you should look for an answer that:', options: ['Directly quotes the passage word for word', 'Is consistent with the author\'s stated views, even if not explicitly mentioned', 'Contradicts the author\'s stated position', 'Requires outside knowledge of the topic'], correctIndex: 1, explain: 'This question type asks for a reasonable extension of the author\'s views, not a direct quotation.' },
+    { id: 'c17', q: 'Distinguishing a claim the author reports (e.g., "some critics argue...") from the author\'s own opinion is important because:', options: ['Reported views are always false', 'The author always agrees with views they report', 'Misattributing a view to the author when it is only reported can lead to a wrong answer', 'Only the author\'s opinion matters in the passage'], correctIndex: 2, explain: 'Test writers often build wrong answers around confusing a reported viewpoint with the author\'s own stance.' },
   ]},
   { id: 'lsat-writing', exam: 'LSAT', title: 'Argumentative Writing Prep', cards: [
     { id: 'c1', kind: 'free', q: "The LSAT's Argumentative Writing section (added in 2026) is unscored but sent to law schools. State a clear one-sentence position on this prompt: should social media platforms verify user identities? Write your thesis." },
@@ -588,6 +710,16 @@ const STUDY_DECKS = [
     { id: 'c3', kind: 'free', q: "Write one sentence acknowledging the strongest counterargument to your position, and explain briefly why your position still holds." },
     { id: 'c4', kind: 'free', q: "Identify one piece of evidence that could undermine your position. How would you address it in one sentence?" },
     { id: 'c5', kind: 'free', q: "Write a concluding sentence that reinforces your thesis without simply repeating it word for word." },
+    { id: 'c6', kind: 'free', q: "Should employers be allowed to continuously monitor employees' computer activity while they work remotely? State a clear one-sentence position on this prompt and write your thesis." },
+    { id: 'c7', kind: 'free', q: 'List two pieces of evidence or reasoning that support the position you just took.' },
+    { id: 'c8', kind: 'free', q: 'Write one sentence acknowledging the strongest counterargument to your position, and explain briefly why your position still holds.' },
+    { id: 'c9', kind: 'free', q: 'Identify one piece of evidence that could undermine your position. How would you address it in one sentence?' },
+    { id: 'c10', kind: 'free', q: 'Write a concluding sentence that reinforces your thesis without simply repeating it word for word.' },
+    { id: 'c11', kind: 'free', q: 'Should public colleges and universities be tuition-free, funded by taxpayers? State a clear one-sentence position on this prompt and write your thesis.' },
+    { id: 'c12', kind: 'free', q: 'List two pieces of evidence or reasoning that support the position you just took.' },
+    { id: 'c13', kind: 'free', q: 'Write one sentence acknowledging the strongest counterargument to your position, and explain briefly why your position still holds.' },
+    { id: 'c14', kind: 'free', q: 'Identify one piece of evidence that could undermine your position. How would you address it in one sentence?' },
+    { id: 'c15', kind: 'free', q: 'Write a concluding sentence that reinforces your thesis without simply repeating it word for word.' },
   ]},
   { id: 'mcat-bio', exam: 'MCAT', title: 'Cell Biology', cards: [
     { id: 'c1', q: 'Which organelle produces most ATP via oxidative phosphorylation?', options: ['Mitochondria', 'Golgi apparatus', 'Ribosome', 'Lysosome'], correctIndex: 0, explain: 'The electron transport chain and ATP synthase are located on the inner mitochondrial membrane.' },
@@ -597,6 +729,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'Which structure regulates what enters and exits the cell?', options: ['The plasma membrane', 'The nucleolus', 'The Golgi apparatus', 'The cytoskeleton'], correctIndex: 0, explain: 'The selectively permeable plasma membrane controls the movement of substances into and out of the cell.' },
     { id: 'c6', q: 'Enzymes speed up reactions by:', options: ['Lowering the activation energy', 'Raising the activation energy', 'Increasing the reaction\'s free energy change', 'Being consumed in the reaction'], correctIndex: 0, explain: 'Enzymes provide an alternate pathway with lower activation energy without changing the overall energy change.' },
     { id: 'c7', q: 'In the cell cycle, DNA replication occurs during:', options: ['S phase', 'G1 phase', 'Mitosis', 'G0 phase'], correctIndex: 0, explain: 'S phase ("synthesis") is when the cell duplicates its DNA before division.' },
+    { id: 'c8', q: 'Placing a cell in a hypertonic solution will cause the cell to:', options: ['Swell and possibly lyse', 'Shrink, as water moves out by osmosis', 'Remain unchanged', 'Divide more rapidly'], correctIndex: 1, explain: 'In a hypertonic environment, water leaves the cell by osmosis, causing it to shrink.' },
+    { id: 'c9', q: 'The sodium-potassium pump moves ions against their gradients using:', options: ['Simple diffusion', 'Facilitated diffusion only', 'Energy from ATP hydrolysis (active transport)', 'Osmotic pressure alone'], correctIndex: 2, explain: 'Moving ions against their concentration gradients requires energy, supplied by ATP hydrolysis &mdash; active transport.' },
+    { id: 'c10', q: 'Which enzyme unwinds the DNA double helix during replication?', options: ['DNA polymerase', 'Ligase', 'Primase', 'Helicase'], correctIndex: 3, explain: 'Helicase breaks the hydrogen bonds between base pairs to unwind the double helix ahead of the replication fork.' },
+    { id: 'c11', q: 'In eukaryotic cells, transcription occurs in the ___ and translation occurs in the ___.', options: ['Nucleus; cytoplasm', 'Cytoplasm; nucleus', 'Mitochondria; nucleus', 'Nucleus; nucleus'], correctIndex: 0, explain: 'mRNA is transcribed in the nucleus, then exported to the cytoplasm, where ribosomes translate it into protein.' },
+    { id: 'c12', q: 'Programmed cell death that eliminates damaged or unneeded cells without triggering inflammation is called:', options: ['Necrosis', 'Apoptosis', 'Mitosis', 'Cytokinesis'], correctIndex: 1, explain: 'Apoptosis is a controlled, non-inflammatory process of self-destruction, unlike necrosis.' },
+    { id: 'c13', q: 'A stem cell capable of giving rise to any cell type in the body, including extra-embryonic tissue, is called:', options: ['Pluripotent', 'Multipotent', 'Totipotent', 'Unipotent'], correctIndex: 2, explain: 'Totipotent cells can form every cell type, including placental tissue, unlike pluripotent cells.' },
+    { id: 'c14', q: 'The endosymbiotic theory proposes that mitochondria originated from:', options: ['A fold of the plasma membrane only', 'Viral DNA integration', 'The nucleolus', 'Free-living prokaryotes engulfed by an ancestral eukaryotic cell'], correctIndex: 3, explain: 'The theory holds that mitochondria descended from independent prokaryotes taken up by an early eukaryotic ancestor.' },
+    { id: 'c15', q: 'Peroxisomes are primarily responsible for:', options: ['Breaking down fatty acids and detoxifying harmful compounds', 'Synthesizing proteins for secretion', 'Packaging proteins for the Golgi', 'Storing genetic material'], correctIndex: 0, explain: 'Peroxisomes oxidize fatty acids and neutralize toxic byproducts such as hydrogen peroxide.' },
+    { id: 'c16', q: 'In cell signaling, a signaling molecule that binds to a receptor is called a:', options: ['Substrate', 'Ligand', 'Enzyme', 'Cofactor'], correctIndex: 1, explain: 'A ligand is any molecule that binds specifically to a receptor to trigger a cellular response.' },
+    { id: 'c17', q: 'Crossing over during meiosis I primarily serves to:', options: ['Repair damaged DNA', 'Double the chromosome number', 'Increase genetic variation among offspring', 'Prevent mutation entirely'], correctIndex: 2, explain: 'Exchanging segments between homologous chromosomes shuffles alleles, increasing genetic diversity in gametes.' },
   ]},
   { id: 'mcat-chem', exam: 'MCAT', title: 'General Chemistry', cards: [
     { id: 'c1', q: 'In a redox reaction, the species that loses electrons is:', options: ['Oxidized (the reducing agent)', 'Reduced (the oxidizing agent)', 'Unchanged', 'A catalyst'], correctIndex: 0, explain: 'Losing electrons is oxidation &mdash; that species reduces the other, so it is the reducing agent.' },
@@ -605,6 +747,16 @@ const STUDY_DECKS = [
     { id: 'c4', q: 'By Le Chatelier\'s principle, increasing pressure on a gas-phase equilibrium shifts it toward:', options: ['The side with fewer moles of gas', 'The side with more moles of gas', 'Neither side', 'Whichever side is exothermic'], correctIndex: 0, explain: 'The system shifts to reduce the increased pressure, favoring fewer gas molecules.' },
     { id: 'c5', q: 'pH is defined as:', options: ['&minus;log[H&#8314;]', 'log[H&#8314;]', '[H&#8314;] &times; [OH&#8315;]', '&minus;log[OH&#8315;]'], correctIndex: 0, explain: 'pH is the negative base-10 logarithm of the hydrogen ion concentration.' },
     { id: 'c6', q: 'A catalyst speeds up a reaction by:', options: ['Lowering activation energy without being consumed', 'Raising the reaction\'s equilibrium constant', 'Being consumed and regenerated only once', 'Increasing the reactants\' concentration'], correctIndex: 0, explain: 'Catalysts provide a lower-energy pathway and are regenerated at the end of the reaction.' },
+    { id: 'c7', q: 'What is the molarity of a solution made by dissolving 2 moles of solute in 4 liters of solution?', options: ['2 M', '0.5 M', '8 M', '0.25 M'], correctIndex: 1, explain: 'Molarity = moles / liters = 2 / 4 = 0.5 M.' },
+    { id: 'c8', q: 'According to the ideal gas law, if temperature and moles are constant, increasing volume will:', options: ['Increase pressure', 'Have no effect on pressure', 'Decrease pressure', 'Increase temperature'], correctIndex: 2, explain: 'With nT constant, PV = nRT means pressure and volume are inversely related &mdash; increasing V decreases P.' },
+    { id: 'c9', q: 'A buffer solution resists changes in pH because it contains:', options: ['Only strong acid', 'Only pure water', 'A strong base alone', 'A weak acid and its conjugate base (or weak base and conjugate acid)'], correctIndex: 3, explain: 'The conjugate acid-base pair can neutralize small additions of either acid or base, stabilizing pH.' },
+    { id: 'c10', q: 'For the reaction 2A + B &rarr; C, the equilibrium constant expression is:', options: ['K = [C] / ([A]&#178;[B])', 'K = [A]&#178;[B] / [C]', 'K = [C] / ([A][B])', 'K = [A][B] / [C]'], correctIndex: 0, explain: 'Products over reactants, each raised to its coefficient: [C] / ([A]&#178;[B]).' },
+    { id: 'c11', q: 'A reaction that releases heat to its surroundings is called:', options: ['Endothermic', 'Exothermic', 'Isothermic', 'Adiabatic'], correctIndex: 1, explain: 'Exothermic reactions release energy, typically as heat, to the surroundings.' },
+    { id: 'c12', q: 'In a reaction with 4 mol A and 3 mol B, where the required ratio is 1:1, the limiting reagent is:', options: ['A, since there is more of it', 'Neither; both are used up equally', 'B, since there is less of it than required', 'Cannot be determined'], correctIndex: 2, explain: 'With a 1:1 ratio needed, B runs out first since only 3 mol are available versus 4 mol of A.' },
+    { id: 'c13', q: 'A central atom with four bonding pairs and no lone pairs has a molecular geometry of:', options: ['Trigonal planar', 'Linear', 'Bent', 'Tetrahedral'], correctIndex: 3, explain: 'Four bonding pairs and no lone pairs arrange themselves tetrahedrally to minimize electron repulsion.' },
+    { id: 'c14', q: 'If a radioactive isotope has a half-life of 10 years, what fraction remains after 30 years?', options: ['1/8', '1/4', '1/16', '1/3'], correctIndex: 0, explain: '30 years is 3 half-lives, so the remaining fraction is (1/2)&#179; = 1/8.' },
+    { id: 'c15', q: 'A salt with a very small Ksp is best described as:', options: ['Highly soluble in water', 'Only slightly soluble in water', 'Completely insoluble with no equilibrium', 'Unrelated to solubility'], correctIndex: 1, explain: 'A small Ksp means the equilibrium favors the undissolved solid, so little of the salt dissolves.' },
+    { id: 'c16', q: 'Across a period (left to right) on the periodic table, electronegativity generally:', options: ['Decreases', 'Stays the same', 'Increases', 'Increases then sharply drops'], correctIndex: 2, explain: 'Nuclear charge increases across a period while shielding stays roughly constant, pulling electrons more strongly.' },
   ]},
   { id: 'mcat-cars', exam: 'MCAT', title: 'CARS: Critical Reasoning', cards: [
     { id: 'c1', q: 'MCAT CARS passages are drawn primarily from:', options: ['Humanities and social sciences, not natural science', 'Organic chemistry', 'Physics and math', 'Anatomy textbooks'], correctIndex: 0, explain: 'CARS deliberately avoids science content so it tests reading and reasoning, not recall.' },
@@ -614,6 +766,16 @@ const STUDY_DECKS = [
     { id: 'c5', q: 'A "strengthen/weaken" CARS question asks you to:', options: ['Evaluate how new information would affect the author\'s argument', 'Recall a fact from the passage', 'Define a difficult vocabulary word', 'Identify the passage\'s genre'], correctIndex: 0, explain: 'These questions test whether you understand the argument well enough to see how new evidence affects it.' },
     { id: 'c6', q: 'If a passage\'s tone is described as "measured," the author most likely:', options: ['Presents claims cautiously, without overstatement', 'Argues aggressively for one side', 'Refuses to take any position', 'Uses highly emotional language'], correctIndex: 0, explain: '"Measured" tone suggests careful, restrained, balanced presentation of claims.' },
     { id: 'c7', q: 'When two authors disagree in a CARS passage, the correct answer to an inference question usually:', options: ['Is consistent with both viewpoints presented, not just one', 'Favors whichever author is quoted first', 'Ignores one author entirely', 'Requires outside knowledge to resolve'], correctIndex: 0, explain: 'A safe inference respects everything the passage says, including both perspectives.' },
+    { id: 'c8', q: 'When a CARS passage reports "some critics believe X" without the author endorsing it, the correct answer to a question about the author\'s view should:', options: ['Always treat X as the author\'s own opinion', 'Not attribute X to the author unless the author explicitly agrees', 'Ignore the distinction entirely', 'Assume X is false'], correctIndex: 1, explain: 'Reported views belong to the people the passage names, not automatically to the author.' },
+    { id: 'c9', q: 'A question stem like "the author implies that..." requires an answer that is:', options: ['Directly quoted from the passage', 'Based on outside knowledge of the subject', 'A reasonable, text-supported inference, not an explicit statement', 'The opposite of what the passage states'], correctIndex: 2, explain: '"Implies" signals an inference question: the answer must follow logically from the text without being stated outright.' },
+    { id: 'c10', q: 'Identifying the unstated assumption behind an author\'s argument means finding:', options: ['The passage\'s topic sentence', 'A direct quotation from the text', 'The author\'s academic credentials', 'What must be true for the stated evidence to support the stated conclusion'], correctIndex: 3, explain: 'An assumption is the unstated bridge connecting the evidence given to the conclusion drawn.' },
+    { id: 'c11', q: 'Many CARS passages follow a structure of stating a claim and then:', options: ['Providing support, examples, or qualifications for that claim', 'Immediately contradicting the claim', 'Repeating the claim verbatim', 'Ending the passage without elaboration'], correctIndex: 0, explain: 'A typical passage develops its opening claim with supporting reasoning, evidence, or nuance.' },
+    { id: 'c12', q: 'An answer choice that is true in general but goes beyond what the passage actually discusses should be:', options: ['Selected, since it is factually accurate', 'Eliminated, since CARS answers must be supported by the passage itself', 'Selected only if no other choice mentions the passage', 'Ignored as irrelevant to scoring'], correctIndex: 1, explain: 'CARS tests reading comprehension, not outside knowledge, so answers must be grounded in the passage.' },
+    { id: 'c13', q: 'When an author uses an analogy (e.g., comparing an economy to an ecosystem), the analogy\'s main purpose is usually to:', options: ['Prove the claim with scientific data', 'Introduce an unrelated topic', 'Make an abstract idea more concrete by comparing it to something familiar', 'Contradict the passage\'s thesis'], correctIndex: 2, explain: 'Analogies illustrate unfamiliar or abstract ideas by linking them to something the reader already understands.' },
+    { id: 'c14', q: 'A rhetorical question posed by the author (one not meant to be literally answered) typically functions to:', options: ['Request information from the reader', 'Signal the passage has ended', 'Introduce an unrelated topic', 'Emphasize a point or guide the reader toward the author\'s intended conclusion'], correctIndex: 3, explain: 'Rhetorical questions are a persuasive device, nudging the reader toward the answer the author already favors.' },
+    { id: 'c15', q: 'An "EXCEPT" question in CARS (e.g., "all of the following are implied EXCEPT") is best handled by:', options: ['Confirming four choices against the passage, leaving the one that is not supported', 'Picking the most emotionally charged choice', 'Assuming the first choice is always wrong', 'Skipping the passage and guessing'], correctIndex: 0, explain: 'Systematically checking each choice against the text isolates the one unsupported answer.' },
+    { id: 'c16', q: 'A passage supporting its claim mainly with personal anecdotes rather than systematic data provides evidence that is:', options: ['Automatically false', 'Suggestive but not as rigorous as systematic or statistical evidence', 'Equivalent in strength to controlled data', 'Irrelevant to the argument'], correctIndex: 1, explain: 'Anecdotes can illustrate a point but are generally weaker evidence than systematically gathered data.' },
+    { id: 'c17', q: 'An "application" question asks you to take the passage\'s underlying principle and:', options: ['Restate it in the passage\'s exact words', 'Find where it is contradicted in the passage', 'Apply it to a new, hypothetical scenario not discussed in the passage', 'Identify the author\'s academic field'], correctIndex: 2, explain: 'Application questions test whether you understood the principle well enough to extend it to a new situation.' },
   ]},
 ];
 const EXAMS = [
@@ -632,7 +794,7 @@ let state = {
   lastActiveDate: null,
   ui: { tab: 'feed', workView: 'list', workAssignmentId: null, workPlayer: null,
         studyExam: null, studyDeckId: null, studyCardIndex: 0, studySession: null,
-        draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null }
+        draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false }
 };
 
 function loadState() {
@@ -1556,13 +1718,17 @@ function renderAssignmentDetail(ass) {
     return `
       <div class="flex items-start gap-3">
         <div class="stepper-node ${nodeClass} shrink-0">${nodeInner}</div>
-        <button data-action="open-problem" data-ass="${ass.id}" data-prob="${p.id}" class="flex-1 min-w-0 p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between text-left">
-          <div class="min-w-0">
-            <div class="text-xs font-bold text-ink truncate math">${p.expr && p.expr.trim() ? p.expr : `<span class="text-ink3 italic font-normal">Problem ${p.index}: tap to add</span>`}</div>
-            <div class="text-[10.5px] text-ink3 mt-0.5">${c}/${t} steps</div>
+        <div class="flex-1 min-w-0 flex items-center gap-1.5">
+          <div data-action="open-problem" data-ass="${ass.id}" data-prob="${p.id}" role="button" tabindex="0" class="flex-1 min-w-0 p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between text-left cursor-pointer">
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-ink truncate math">${p.expr && p.expr.trim() ? p.expr : `<span class="text-ink3 italic font-normal">Problem ${p.index}: tap to add</span>`}</div>
+              <div class="text-[10.5px] text-ink3 mt-0.5">${c}/${t} steps</div>
+            </div>
+            ${icon('chevronRight', 'w-4 h-4 text-ink3 shrink-0')}
           </div>
-          ${icon('chevronRight', 'w-4 h-4 text-ink3 shrink-0')}
-        </button>
+          <button data-action="edit-problem" data-ass="${ass.id}" data-prob="${p.id}" class="w-8 h-8 rounded-lg bg-surface2 border border-line text-ink3 flex items-center justify-center shrink-0" title="Edit problem" aria-label="Edit problem">${icon('edit', 'w-3.5 h-3.5')}</button>
+          <button data-action="ask-delete-problem" data-ass="${ass.id}" data-prob="${p.id}" class="w-8 h-8 rounded-lg bg-surface2 border border-line text-ink3 hover:text-bad flex items-center justify-center shrink-0" title="Delete problem" aria-label="Delete problem">${icon('trash', 'w-3.5 h-3.5')}</button>
+        </div>
       </div>`;
   }).join('');
   return `<div class="p-4 space-y-4">
@@ -1817,6 +1983,7 @@ function openExportSheet(assId) {
       <div class="app-header p-4 border-b border-line flex items-center justify-between bg-bg shrink-0">
         <div><h3 class="text-sm font-bold text-ink">Submission Sheet</h3><p class="text-[10.5px] text-ink2">${escapeHtml(ass.title)}</p></div>
         <div class="flex items-center gap-2">
+          ${navigator.share ? `<button data-action="share-sheet" data-ass="${ass.id}" class="px-3 py-1.5 rounded-lg grad-btn text-xs flex items-center gap-1.5">${icon('upload','w-3.5 h-3.5')} Share</button>` : ''}
           <button data-action="copy-sheet" data-ass="${ass.id}" class="px-3 py-1.5 rounded-lg bg-surface2 border border-line text-ink text-xs font-bold flex items-center gap-1.5">${icon('copy','w-3.5 h-3.5')} Copy</button>
           <button data-action="close-export" class="p-1.5 rounded-lg bg-surface2 border border-line text-ink2">${icon('x','w-4 h-4')}</button>
         </div>
@@ -1859,6 +2026,149 @@ function buildSheetText(ass) {
   return out;
 }
 
+async function shareSheet(assId) {
+  const ass = getAssignment(assId);
+  const text = buildSheetText(ass);
+  if (!navigator.share) return;
+  try { await navigator.share({ title: ass.title, text }); }
+  catch (e) { /* user cancelled the native share sheet  -  not an error */ }
+}
+
+/* ============================== SETTINGS / DATA ============================== */
+function totalStepsDone() {
+  let done = 0;
+  state.assignments.forEach(a => a.problems.forEach(p => p.steps.forEach(s => { if (s.completed) done++; })));
+  return done;
+}
+function totalCardsReviewed() {
+  let n = 0;
+  Object.values(state.studyProgress).forEach(deck => { n += Object.keys(deck).length; });
+  return n;
+}
+
+function openSettingsSheet() {
+  const root = document.getElementById('overlay-root');
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-black z-50 flex flex-col">
+      <div class="app-header p-4 border-b border-line flex items-center justify-between bg-bg shrink-0">
+        <h3 class="text-sm font-bold text-ink font-display">Settings</h3>
+        <button data-action="close-settings" class="p-1.5 rounded-lg bg-surface2 border border-line text-ink2">${icon('x','w-4 h-4')}</button>
+      </div>
+      <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+        <div class="p-4 rounded-xl bg-surface border border-line grid grid-cols-3 gap-3 text-center">
+          <div><div class="text-lg font-display font-bold text-ink">${state.assignments.length}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Assignments</div></div>
+          <div><div class="text-lg font-display font-bold text-ink">${totalStepsDone()}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Steps done</div></div>
+          <div><div class="text-lg font-display font-bold text-ink">${state.streakDays || 0}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Day streak</div></div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Your data</h4>
+          <p class="text-[11px] text-ink2 px-1 leading-relaxed">Everything stays on this device  -  there's no account and no server. Export a backup before clearing browser data or switching phones, or you'll lose your progress for good.</p>
+          <button data-action="export-data" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3 text-left">
+            ${icon('fileText','w-4 h-4 text-accent-500 shrink-0')}
+            <div class="min-w-0"><div class="text-xs font-bold text-ink">Export backup</div><div class="text-[10.5px] text-ink3">Save everything as a .json file</div></div>
+          </button>
+          <button data-action="trigger-import-data" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3 text-left">
+            ${icon('upload','w-4 h-4 text-accent-500 shrink-0')}
+            <div class="min-w-0"><div class="text-xs font-bold text-ink">Import backup</div><div class="text-[10.5px] text-ink3">Restore from a .json file (replaces current data)</div></div>
+          </button>
+        </div>
+
+        ${state.ui.confirmClearData ? `
+        <div class="p-4 rounded-xl bg-surface border border-bad/40 space-y-3 enter">
+          <div class="text-xs text-ink"><span class="font-bold">Clear all data?</span> <span class="text-ink2">Every assignment and all study progress on this device will be permanently deleted.</span></div>
+          <div class="flex items-center gap-2">
+            <button data-action="cancel-clear-data" class="flex-1 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Cancel</button>
+            <button data-action="confirm-clear-data" class="flex-1 py-2 rounded-xl bg-bad text-white text-xs font-bold">Clear everything</button>
+          </div>
+        </div>` : `
+        <button data-action="ask-clear-data" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3 text-left">
+          ${icon('trash','w-4 h-4 text-bad shrink-0')}
+          <div class="min-w-0"><div class="text-xs font-bold text-bad">Clear all data</div><div class="text-[10.5px] text-ink3">Start over from scratch</div></div>
+        </button>`}
+
+        <div class="pt-2 text-center text-[10px] text-ink3">Piecewise &middot; runs entirely on this device</div>
+      </div>
+    </div>`;
+}
+
+function exportAllData() {
+  const { ui, ...persist } = state;
+  const blob = new Blob([JSON.stringify(persist, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `piecewise-backup-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Backup downloaded');
+}
+
+function handleImportFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      if (!data || !Array.isArray(data.assignments)) throw new Error('bad shape');
+      state.assignments = data.assignments;
+      state.studyProgress = data.studyProgress || {};
+      state.streakDays = data.streakDays || 0;
+      state.lastActiveDate = data.lastActiveDate || null;
+      saveState();
+      openSettingsSheet();
+      toast('Backup imported');
+    } catch (e) {
+      toast("That file doesn't look like a Piecewise backup");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  state.assignments = [];
+  state.studyProgress = {};
+  state.streakDays = 0;
+  state.lastActiveDate = null;
+  state.ui.confirmClearData = false;
+  state.ui.workPlayer = null; state.ui.workView = 'list'; state.ui.workAssignmentId = null;
+  try { localStorage.removeItem('piecewise_v2'); } catch (e) {}
+  document.getElementById('overlay-root').innerHTML = '';
+  switchTab('feed');
+  toast('All data cleared');
+}
+
+/* ============================== EDIT / DELETE SINGLE PROBLEM ============================== */
+function openEditProblemSheet(assId, probId) {
+  const ass = getAssignment(assId), p = getProblem(ass, probId);
+  const root = document.getElementById('overlay-root');
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-black/70 z-50 flex items-center justify-center p-5">
+      <div class="bg-surface border border-line rounded-2xl p-5 max-w-sm w-full space-y-3 pop">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-bold text-ink">Edit Problem ${p.index}</span>
+          <button data-action="close-overlay-generic" class="text-ink3">${icon('x','w-4 h-4')}</button>
+        </div>
+        <textarea id="edit-problem-text" rows="3" class="w-full bg-bg border border-line rounded-xl p-3 text-[12.5px] text-ink no-scrollbar" placeholder="Problem text">${escapeHtml(p.expr || '')}</textarea>
+        <button data-action="save-problem-edit" data-ass="${assId}" data-prob="${probId}" class="w-full py-2.5 rounded-lg grad-btn text-xs">Save</button>
+      </div>
+    </div>`;
+}
+
+function openDeleteProblemConfirm(assId, probId) {
+  const ass = getAssignment(assId), p = getProblem(ass, probId);
+  const root = document.getElementById('overlay-root');
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-black/70 z-50 flex items-center justify-center p-5">
+      <div class="bg-surface border border-line rounded-2xl p-5 max-w-xs w-full space-y-4 pop">
+        <div class="text-sm text-ink"><span class="font-bold">Remove Problem ${p.index}?</span> <span class="text-ink2">This can't be undone.</span></div>
+        <div class="flex items-center gap-2">
+          <button data-action="close-overlay-generic" class="flex-1 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Cancel</button>
+          <button data-action="confirm-delete-problem" data-ass="${assId}" data-prob="${probId}" class="flex-1 py-2 rounded-xl bg-bad text-white text-xs font-bold">Remove</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 /* ============================== EVENT DELEGATION ============================== */
 function bindDynamicHandlers() {
   const input = document.getElementById('file-input');
@@ -1869,6 +2179,8 @@ function bindDynamicHandlers() {
   if (raw) raw.oninput = () => { state.ui.draftText = raw.value; };
   const scopeSel = document.getElementById('feed-scope-select');
   if (scopeSel) scopeSel.onchange = () => { state.ui.feedScope = scopeSel.value; state.ui.feedFocusKey = null; render(); };
+  const importInput = document.getElementById('import-file-input');
+  if (importInput) importInput.onchange = e => { handleImportFile(e.target.files[0]); e.target.value = ''; };
   attachSwipeHandlers();
 }
 
@@ -1957,6 +2269,7 @@ document.addEventListener('click', e => {
     if (!sel || sel.index === undefined) { toast('Pick an answer first'); return; }
     const ass = getAssignment(t.dataset.ass), p = getProblem(ass, t.dataset.prob), s = getStep(p, t.dataset.step);
     if (sel.index === s.correctIndex) {
+      haptic(14);
       sel.checked = true; render();
       const result = completeHomeworkStep(t.dataset.ass, t.dataset.prob, t.dataset.step, sel.index);
       if (!result.problemComplete) {
@@ -1964,6 +2277,7 @@ document.addEventListener('click', e => {
         setTimeout(() => render(), 700);
       }
     } else {
+      haptic([10, 40, 10]);
       sel.checked = true; render();
     }
   }
@@ -2030,6 +2344,8 @@ document.addEventListener('click', e => {
     const sel = state.ui.draftAnswers[key];
     if (!sel || sel.index === undefined) { toast('Pick an answer first'); return; }
     sel.checked = true;
+    const card = getDeck(t.dataset.deck).cards.find(c => c.id === t.dataset.card);
+    haptic(sel.index === card.correctIndex ? 14 : [10, 40, 10]);
     completeStudyCard(t.dataset.deck, t.dataset.card, sel.index);
     render();
   }
@@ -2039,6 +2355,36 @@ document.addEventListener('click', e => {
     const text = state.ui.draftAnswers[key]?.text || '';
     completeFreeStudyCard(t.dataset.deck, t.dataset.card, text);
     render();
+  }
+
+  else if (a === 'share-sheet') shareSheet(t.dataset.ass);
+  else if (a === 'open-settings') openSettingsSheet();
+  else if (a === 'close-settings') { document.getElementById('overlay-root').innerHTML = ''; }
+  else if (a === 'close-overlay-generic') { document.getElementById('overlay-root').innerHTML = ''; }
+  else if (a === 'export-data') exportAllData();
+  else if (a === 'trigger-import-data') document.getElementById('import-file-input')?.click();
+  else if (a === 'ask-clear-data') { state.ui.confirmClearData = true; openSettingsSheet(); }
+  else if (a === 'cancel-clear-data') { state.ui.confirmClearData = false; openSettingsSheet(); }
+  else if (a === 'confirm-clear-data') clearAllData();
+
+  else if (a === 'edit-problem') openEditProblemSheet(t.dataset.ass, t.dataset.prob);
+  else if (a === 'save-problem-edit') {
+    const val = document.getElementById('edit-problem-text').value.trim();
+    const ass = getAssignment(t.dataset.ass), p = getProblem(ass, t.dataset.prob);
+    p.expr = escapeHtml(val);
+    document.getElementById('overlay-root').innerHTML = '';
+    saveState(); render();
+    toast('Problem updated');
+  }
+  else if (a === 'ask-delete-problem') openDeleteProblemConfirm(t.dataset.ass, t.dataset.prob);
+  else if (a === 'confirm-delete-problem') {
+    const ass = getAssignment(t.dataset.ass);
+    const idx = ass.problems.findIndex(p => p.id === t.dataset.prob);
+    if (idx !== -1) ass.problems.splice(idx, 1);
+    ass.problems.forEach((p, i) => { p.index = i + 1; });
+    document.getElementById('overlay-root').innerHTML = '';
+    saveState(); render();
+    toast('Problem removed');
   }
 });
 
