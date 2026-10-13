@@ -1312,22 +1312,34 @@ const QUESTION_START_RE = /^\(?\s*(?:q(?:uestion)?\.?\s*|problem\.?\s*|#)?(\d{1,
 // Cuts right after: (a) an ordinary sentence end (. ! ?) followed by a capital letter or digit,
 // or (b) "= <plain number>" (a closed numeric answer)  -  but NOT when that number is actually
 // the start of a coefficient like "2x" (checked via a lookahead so "= 2x" is never cut).
+// Common abbreviations whose period is never a real sentence end  -  without this guard a
+// run-on splitter applied to non-math subjects (history, language, reading) would wrongly
+// cut after "Dr.", "U.S.", "e.g.", a single initial like "J.", etc.
+const ABBREV_RE = /\b(mr|mrs|ms|dr|prof|st|jr|sr|vs|etc|e\.g|i\.e|a\.m|p\.m|vol|fig|eq|no|dept|ave|blvd|approx|[a-z])$/i;
+
 function splitRunOnBlock(text) {
-  const BOUNDARY_RE = /=\s*-?\d+(?:\.\d+)?(?![a-zA-Z])\.?|[.!?]+(?=\s+[A-Z0-9])/;
-  const parts = [];
-  let remaining = (text || '').trim();
-  let guard = 0;
-  while (remaining && guard++ < 300) {
-    const m = remaining.match(BOUNDARY_RE);
-    if (!m) { parts.push(remaining); break; }
-    const cut = m.index + m[0].length;
-    const piece = remaining.slice(0, cut).trim();
-    const rest = remaining.slice(cut).trim();
-    if (!rest) { parts.push(piece); break; }
-    parts.push(piece);
-    remaining = rest;
+  const t = (text || '').trim();
+  if (!t) return [];
+  const BOUNDARY_RE = /=\s*-?\d+(?:\.\d+)?(?![a-zA-Z])\.?|[.!?]+(?=\s+[A-Z0-9])/g;
+  const cuts = [];
+  let m;
+  while ((m = BOUNDARY_RE.exec(t))) {
+    const end = m.index + m[0].length;
+    const isEquationClose = m[0].includes('=');
+    if (!isEquationClose) {
+      const wordBefore = t.slice(0, m.index).match(/([A-Za-z]+)$/);
+      if (wordBefore && ABBREV_RE.test(wordBefore[1])) continue; // looks like an abbreviation/initial, not a real sentence end
+    }
+    cuts.push(end);
   }
-  return parts.map(p => p.trim()).filter(p => p.length > 1);
+  if (!cuts.length) return [t];
+  const parts = [];
+  let start = 0;
+  for (const c of cuts) {
+    if (c > start) { parts.push(t.slice(start, c).trim()); start = c; }
+  }
+  if (start < t.length) parts.push(t.slice(start).trim());
+  return parts.filter(p => p.length > 1);
 }
 
 // Applies splitRunOnBlock only to blocks that are suspiciously long for a single problem and
@@ -1576,11 +1588,21 @@ function showReadingOverlay() {
           ${icon('sparkle', 'w-5 h-5 text-accent-500')}
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-ink">Reading your file&hellip;</h3>
-          <p class="text-[11px] text-ink2 mt-1">This can take a moment, and may ask you to allow it once.</p>
+          <h3 id="reading-overlay-title" class="text-sm font-semibold text-ink">Reading your file&hellip;</h3>
+          <p id="reading-overlay-sub" class="text-[11px] text-ink2 mt-1">This can take a moment, and may ask you to allow it once.</p>
+        </div>
+        <div class="w-full h-1.5 bg-surface2 rounded-full overflow-hidden">
+          <div id="reading-overlay-bar" class="h-full bg-accent-500 transition-all duration-200" style="width:0%"></div>
         </div>
       </div>
     </div>`;
+}
+// Called with live progress while OCR runs (0-1) so a slow photo doesn't look frozen.
+function updateReadingProgress(pct, label) {
+  const bar = document.getElementById('reading-overlay-bar');
+  if (bar) bar.style.width = Math.round(Math.max(0, Math.min(1, pct)) * 100) + '%';
+  const sub = document.getElementById('reading-overlay-sub');
+  if (sub && label) sub.textContent = label;
 }
 function hideReadingOverlay() {
   const root = document.getElementById('overlay-root');
@@ -1667,9 +1689,50 @@ function loadImageFromFile(file) {
 // Grayscale + contrast-stretch (and upscale if small) before handing a photo to OCR.
 // Phone photos of worksheets are usually low-contrast and unevenly lit, which is exactly
 // what trips up Tesseract; this one pass measurably improves recognition on real photos.
+// Local-adaptive ("Bradley") thresholding: each pixel is compared against the average
+// brightness of its own neighborhood rather than one global cutoff, computed in O(1) per
+// pixel via an integral image. This is the standard fix for what actually trips up OCR on a
+// real phone photo  -  an uneven lighting gradient or a shadow across the page  -  which a
+// single global contrast stretch cannot correct since one side of the page is genuinely
+// brighter than the other.
+function adaptiveThreshold(imageData, windowSize, t) {
+  const { data, width, height } = imageData;
+  const gray = new Float64Array(width * height);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  }
+  const iw = width + 1;
+  const integral = new Float64Array(iw * (height + 1));
+  for (let y = 0; y < height; y++) {
+    let rowSum = 0;
+    for (let x = 0; x < width; x++) {
+      rowSum += gray[y * width + x];
+      integral[(y + 1) * iw + (x + 1)] = integral[y * iw + (x + 1)] + rowSum;
+    }
+  }
+  const s2 = windowSize >> 1;
+  for (let y = 0; y < height; y++) {
+    const y1 = Math.max(0, y - s2), y2 = Math.min(height - 1, y + s2);
+    for (let x = 0; x < width; x++) {
+      const x1 = Math.max(0, x - s2), x2 = Math.min(width - 1, x + s2);
+      const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+      const sum = integral[(y2 + 1) * iw + (x2 + 1)] - integral[y1 * iw + (x2 + 1)] - integral[(y2 + 1) * iw + x1] + integral[y1 * iw + x1];
+      const p = y * width + x;
+      const value = gray[p] * count <= sum * (1 - t) ? 0 : 255;
+      const di = p * 4;
+      data[di] = data[di + 1] = data[di + 2] = value;
+    }
+  }
+  return imageData;
+}
+
 async function preprocessImageForOCR(file) {
   const img = await loadImageFromFile(file);
-  const scale = img.width < 1400 ? Math.min(2.2, 1400 / img.width) : 1;
+  // Upscale small photos (helps OCR read small text) and cap huge ones (modern phone photos
+  // can be 3000-4000px wide; OCR gains nothing past ~2200px and it just costs time/memory).
+  let scale = 1;
+  if (img.width < 1400) scale = Math.min(2.2, 1400 / img.width);
+  else if (img.width > 2200) scale = 2200 / img.width;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(img.width * scale);
   canvas.height = Math.round(img.height * scale);
@@ -1677,20 +1740,8 @@ async function preprocessImageForOCR(file) {
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = imageData.data;
-  const gray = new Float32Array(d.length / 4);
-  let min = 255, max = 0;
-  for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-    const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    gray[j] = g;
-    if (g < min) min = g;
-    if (g > max) max = g;
-  }
-  const range = Math.max(1, max - min);
-  for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-    const v = Math.min(255, Math.max(0, ((gray[j] - min) / range) * 255));
-    d[i] = d[i + 1] = d[i + 2] = v;
-  }
+  const windowSize = Math.max(15, Math.round(canvas.width / 8));
+  adaptiveThreshold(imageData, windowSize, 0.15);
   ctx.putImageData(imageData, 0, 0);
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
@@ -1698,15 +1749,34 @@ async function preprocessImageForOCR(file) {
 // Client-side OCR via Tesseract.js  -  runs entirely in the browser, no server or API key needed.
 // Uses the worker API (not the one-shot convenience call) so we can set a page-segmentation
 // mode suited to a worksheet: a single column of variably-sized text blocks, read top to bottom.
+const OCR_STATUS_LABELS = {
+  'loading tesseract core': 'Starting the reader…',
+  'initializing tesseract': 'Starting the reader…',
+  'loading language traineddata': 'Downloading language data… (first time only)',
+  'initializing api': 'Almost ready…',
+  'recognizing text': 'Reading your worksheet…',
+};
+
 async function extractTextFromImage(file) {
   if (!window.Tesseract) {
     await loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js');
   }
+  updateReadingProgress(0.08, 'Cleaning up the photo…');
   let input = file;
   try { input = await preprocessImageForOCR(file); } catch (e) { /* fall back to the raw file if preprocessing fails */ }
+  updateReadingProgress(0.18);
+
+  const logger = m => {
+    if (!m || typeof m.progress !== 'number') return;
+    // Stages before "recognizing text" (model/language download, init) count for ~20% of the
+    // bar; the actual OCR pass fills the rest, so the bar moves the whole time, not just at the end.
+    const base = m.status === 'recognizing text' ? 0.2 : 0;
+    const span = m.status === 'recognizing text' ? 0.8 : 0.2;
+    updateReadingProgress(base + m.progress * span, OCR_STATUS_LABELS[m.status]);
+  };
 
   if (window.Tesseract.createWorker) {
-    const worker = await window.Tesseract.createWorker('eng');
+    const worker = await window.Tesseract.createWorker('eng', 1, { logger });
     try {
       // Default (fully-automatic) page segmentation. Worksheets commonly have a numbered
       // answer-blank column beside the actual problem text, which a forced single-column
@@ -1717,7 +1787,7 @@ async function extractTextFromImage(file) {
       await worker.terminate();
     }
   }
-  const result = await window.Tesseract.recognize(input, 'eng');
+  const result = await window.Tesseract.recognize(input, 'eng', { logger });
   return (result && result.data && result.data.text) || '';
 }
 
