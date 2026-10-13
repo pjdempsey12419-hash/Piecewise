@@ -1,4 +1,4 @@
-const CACHE = 'piecewise-v3';
+const CACHE = 'piecewise-v4';
 const SHELL = ['./', './piecewise.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', (event) => {

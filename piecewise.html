@@ -1288,8 +1288,9 @@ function looksLikeWorksheetNoise(line) {
     /^instructions?\s*:?\s*$/i, /^directions?\s*:?\s*$/i,
     /^(show|write|circle|box|underline|label)\s+(all\s+)?your\s+(work|answer)/i,
     /^worksheet$/i, /^homework$/i, /^assignment$/i, /^answer\s+key$/i,
-    /^\d{1,4}\s*$/,                      // a bare number (stray page number)
+    /^\(?\d{1,4}\)?\.?\s*$/,             // a bare number (stray page number, or a leftover answer-blank marker)
     /^[_\-=.\s]{4,}$/,                   // a divider line of dashes/underscores/dots
+    /^(https?:\/\/|www\.)\S+$/i,         // a standalone URL (worksheet-site watermark/footer)
   ].some(re => re.test(l));
 }
 
@@ -1305,6 +1306,42 @@ const QUESTION_START_RE = /^\(?\s*(?:q(?:uestion)?\.?\s*|problem\.?\s*|#)?(\d{1,
 // furniture (name/date fields, page numbers, "show your work") are dropped rather than turned
 // into fake problems. If no numbering is found at all, falls back to blank-line-separated
 // paragraphs, which is still far better than one-fake-problem-per-line.
+// Breaks apart a single run-on chunk that actually contains several short problems with no
+// line breaks or numbering between them  -  e.g. a list of equations ("x+3=2x -3x=-18 4x-3x=12")
+// or several repeated sentences ("Evaluate the expression for x = 2. Evaluate ... for a = 5.").
+// Cuts right after: (a) an ordinary sentence end (. ! ?) followed by a capital letter or digit,
+// or (b) "= <plain number>" (a closed numeric answer)  -  but NOT when that number is actually
+// the start of a coefficient like "2x" (checked via a lookahead so "= 2x" is never cut).
+function splitRunOnBlock(text) {
+  const BOUNDARY_RE = /=\s*-?\d+(?:\.\d+)?(?![a-zA-Z])\.?|[.!?]+(?=\s+[A-Z0-9])/;
+  const parts = [];
+  let remaining = (text || '').trim();
+  let guard = 0;
+  while (remaining && guard++ < 300) {
+    const m = remaining.match(BOUNDARY_RE);
+    if (!m) { parts.push(remaining); break; }
+    const cut = m.index + m[0].length;
+    const piece = remaining.slice(0, cut).trim();
+    const rest = remaining.slice(cut).trim();
+    if (!rest) { parts.push(piece); break; }
+    parts.push(piece);
+    remaining = rest;
+  }
+  return parts.map(p => p.trim()).filter(p => p.length > 1);
+}
+
+// Applies splitRunOnBlock only to blocks that are suspiciously long for a single problem and
+// contain more than one likely boundary  -  short, already-clean blocks are left untouched.
+function refineLongBlocks(blocks) {
+  const out = [];
+  for (const b of blocks) {
+    const boundaryCount = (b.match(/=\s*-?\d+(?:\.\d+)?(?![a-zA-Z])|[.!?]+\s+[A-Z0-9]/g) || []).length;
+    if (b.length > 70 && boundaryCount > 1) out.push(...splitRunOnBlock(b));
+    else out.push(b);
+  }
+  return out;
+}
+
 function parseExtractedDocument(raw) {
   const rawLines = (raw || '').split(/\r?\n/).map(l => l.trim());
   // If the document uses numbering anywhere, anything before the FIRST marker is a title,
@@ -1316,13 +1353,17 @@ function parseExtractedDocument(raw) {
   const blocks = [];
   let current = null;
   let sawNumbering = false;
+  let emptyMarkerCount = 0;   // markers immediately followed by another marker (just answer-blank numbers)
 
   for (const line of rawLines) {
     if (!line || looksLikeWorksheetNoise(line)) continue;
     const m = line.match(QUESTION_START_RE);
     if (m) {
       sawNumbering = true;
-      if (current) blocks.push(current.trim());
+      if (current !== null) {
+        const trimmed = current.trim();
+        if (trimmed) blocks.push(trimmed); else emptyMarkerCount++;
+      }
       current = line.slice(m[0].length).trim();
     } else if (current !== null) {
       current = (current + ' ' + line).trim();   // a wrapped continuation of the current problem
@@ -1331,23 +1372,45 @@ function parseExtractedDocument(raw) {
     }
     // else: numbering exists elsewhere but hasn't started yet -> this is header/title text, drop it
   }
-  if (current) blocks.push(current.trim());
+  if (current) blocks.push(current.trim()); else if (current === '') emptyMarkerCount++;
 
-  if (sawNumbering) {
-    const cleaned = blocks.map(b => b.replace(/\s{2,}/g, ' ').trim()).filter(b => b.length > 1 && !looksLikeWorksheetNoise(b));
-    if (cleaned.length) return cleaned;
+  // A string of markers with nothing between them (1. 2. 3. 4. ...) is just a printed list of
+  // blank answer lines, not real boundaries  -  if most of the markers we saw were empty like
+  // that, the numbering for this document isn't trustworthy, so fall through to the paragraph
+  // fallback below instead of trusting whatever got dumped after the last empty marker.
+  const numberingIsDegenerate = emptyMarkerCount >= 3 && emptyMarkerCount > blocks.length;
+
+  const cleanOnly = arr => {
+    const out = arr.map(b => b.replace(/\s{2,}/g, ' ').trim()).filter(b => b.length > 1 && !looksLikeWorksheetNoise(b));
+    return out.length ? out : null;
+  };
+  // Only used for the fallback paths below, where we have no reliable document numbering to
+  // trust  -  never applied to a block that real numbering already bounded correctly, since
+  // a naturally longer numbered problem (e.g. one spanning a small system of equations) must
+  // not get chopped up just because it happens to contain more than one "=".
+  const finalize = arr => cleanOnly(refineLongBlocks(arr));
+
+  if (sawNumbering && !numberingIsDegenerate) {
+    const result = cleanOnly(blocks);
+    if (result) return result;
   }
 
-  // No numbering detected (or nothing usable came out of it)  -  fall back to paragraphs:
+  // No numbering detected (or it turned out to be degenerate)  -  fall back to paragraphs:
   // blank-line-separated chunks, each with its own wrapped lines joined into one problem.
   const paragraphs = (raw || '')
     .split(/\n\s*\n+/)
     .map(p => p.replace(/\s+/g, ' ').trim())
     .filter(p => p.length > 8 && !looksLikeWorksheetNoise(p));
-  if (paragraphs.length > 1) return paragraphs;
+  if (paragraphs.length > 1) {
+    const result = finalize(paragraphs);
+    if (result) return result;
+  }
 
+  // Truly just one undifferentiated blob of text (common when OCR loses all line structure)
+  // -  still worth trying to split it into separate problems rather than giving up.
   const whole = (raw || '').replace(/\s+/g, ' ').trim();
-  return [whole || 'Untitled problem'];
+  if (!whole) return ['Untitled problem'];
+  return finalize([whole]) || ['Untitled problem'];
 }
 
 function renderUploadTab() {
@@ -1645,7 +1708,9 @@ async function extractTextFromImage(file) {
   if (window.Tesseract.createWorker) {
     const worker = await window.Tesseract.createWorker('eng');
     try {
-      await worker.setParameters({ tessedit_pageseg_mode: '4' }); // single column, variable text sizes
+      // Default (fully-automatic) page segmentation. Worksheets commonly have a numbered
+      // answer-blank column beside the actual problem text, which a forced single-column
+      // mode would badly scramble  -  automatic layout detection handles that far better.
       const { data } = await worker.recognize(input);
       return (data && data.text) || '';
     } finally {
