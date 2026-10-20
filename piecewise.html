@@ -334,6 +334,12 @@
   /* Section headings are plain in the reference  -  no rule, no diamond. */
   .section-rule { display: flex; align-items: center; gap: 8px; }
 
+  /* Streak pill: the flame only lights once today's goal is in, so the header
+     says at a glance whether the day is still outstanding. */
+  .streak-pill .streak-flame { color: rgb(var(--c-ink3)); transition: color .2s ease, background .2s ease; }
+  .streak-pill.met .streak-flame { color: rgb(var(--c-peach-700)); background: rgb(var(--c-peach-100)) !important; }
+  .streak-pill.met { background: rgb(var(--c-peach-100)) !important; }
+
   /* Pastel subject tiles: soft square, generous radius, no border. */
   .subject-chip { border-radius: 14px; }
 
@@ -388,12 +394,12 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface2" style="border:1px solid rgb(var(--c-linesoft))" title="Day streak">
-            <span class="w-5 h-5 rounded-full bg-surface flex items-center justify-center" style="border:1px solid rgb(var(--c-linesoft))">
-              <svg class="w-2.5 h-2.5" style="color:rgb(var(--c-peach-600))" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
+          <button id="streak-pill" data-action="goto-tab" data-tab="study" class="streak-pill flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface2" style="border:1px solid rgb(var(--c-linesoft))" title="Day streak">
+            <span class="streak-flame w-5 h-5 rounded-full bg-surface flex items-center justify-center" style="border:1px solid rgb(var(--c-linesoft))">
+              <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
             </span>
             <span id="streak-counter" class="text-xs font-semibold text-ink font-mono">0</span>
-          </div>
+          </button>
           <button data-action="open-settings" class="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center text-ink2 shrink-0" style="border:1px solid rgb(var(--c-linesoft))" title="Settings" aria-label="Settings">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
@@ -405,9 +411,13 @@
     <main id="main" class="flex-1 overflow-y-auto no-scrollbar relative bg-bg"></main>
 
     <nav class="app-nav px-3 pt-2 bg-bg border-t border-line flex items-center justify-around shrink-0 z-20">
+      <button data-tab="study" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+        <span class="text-[10px] font-medium">Study</span>
+      </button>
       <button data-tab="feed" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-        <span class="text-[10px] font-medium">Today</span>
+        <span class="text-[10px] font-medium">Assignments</span>
       </button>
       <button data-tab="upload" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
@@ -415,11 +425,7 @@
       </button>
       <button data-tab="work" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="4" y="16" width="10" height="4" rx="1"/></svg>
-        <span class="text-[10px] font-medium">Work</span>
-      </button>
-      <button data-tab="study" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-        <span class="text-[10px] font-medium">Study</span>
+        <span class="text-[10px] font-medium">Library</span>
       </button>
       <button data-tab="calendar" class="nav-btn flex flex-col items-center gap-1 px-2 py-1 text-ink2">
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
@@ -442,6 +448,8 @@ const ICONS = {
   lightbulb: '<path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.3V16h6v-1.2c0-.9.4-1.7 1-2.3A6 6 0 0 0 12 2z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  flame: '<path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z" fill="currentColor" stroke="none"/>',
+  snowflake: '<path d="M12 2v20M4.2 7l15.6 10M19.8 7 4.2 17"/><path d="M12 6.5 9.8 4.3M12 6.5l2.2-2.2M12 17.5l-2.2 2.2M12 17.5l2.2 2.2"/>',
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   arrowLeft: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
@@ -953,12 +961,26 @@ const EXAMS = [
 let state = {
   assignments: [],
   studyProgress: {},
+  // The exam being studied for lives outside `ui` on purpose: `ui` is deliberately
+  // not persisted, and this is the one piece of study navigation that should
+  // survive a reload so nobody re-picks their exam every time they open the app.
+  studyExam: null,
+
+  // Daily streak. The streak counts days the study goal was MET, not days the app
+  // was opened, so it stays worth something. studyLog keeps a per-day tally, which
+  // is what the week strip reads and what makes the count resilient to cards being
+  // reviewed more than once.
+  dailyGoal: 10,
+  studyLog: {},            // 'YYYY-MM-DD' -> cards reviewed that day
   streakDays: 0,
+  bestStreak: 0,
+  lastGoalDate: null,      // last day the goal was met
+  streakFreezes: 1,        // covers a single missed day; earned back at each 7-day mark
   lastActiveDate: null,
   theme: 'light',    // 'light' | 'dark' | 'system'  -  persisted with the rest of state
   themeChosen: false,// true once the user picks a mode in Settings themselves
-  ui: { tab: 'feed', workView: 'list', workAssignmentId: null, workPlayer: null,
-        studyExam: null, studyDeckId: null, studyCardIndex: 0, studySession: null,
+  ui: { tab: 'study', workView: 'list', workAssignmentId: null, workPlayer: null,
+        studyDeckId: null, studyCardIndex: 0, studySession: null, studyQueue: null, studyMeta: null,
         draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false,
         librarySearch: '', librarySubject: 'All', libraryHideDone: false }
 };
@@ -987,14 +1009,137 @@ function saveState() {
   } catch (e) {}
   const el = document.getElementById('streak-counter');
   if (el) el.textContent = state.streakDays || 0;
+  const pill = document.getElementById('streak-pill');
+  if (pill) {
+    const met = goalMetToday();
+    pill.classList.toggle('met', met);
+    pill.title = met
+      ? `${state.streakDays || 0} day streak  -  today's goal is done`
+      : `${studiedToday()}/${state.dailyGoal || 10} cards today`;
+  }
 }
 
 function markActivity() {
-  const today = todayStr();
-  if (state.lastActiveDate === today) return;
-  const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  state.streakDays = (state.lastActiveDate === yest) ? (state.streakDays || 0) + 1 : 1;
-  state.lastActiveDate = today;
+  state.lastActiveDate = todayStr();
+}
+
+/* ============================== DAILY STREAK ============================== */
+const GOAL_CHOICES = [5, 10, 20];
+
+function dateKey(offsetDays) {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);                       // midday avoids DST edges
+  d.setDate(d.getDate() + (offsetDays || 0));
+  return d.toISOString().split('T')[0];
+}
+function daysBetween(fromIso, toIso) {
+  const a = new Date(fromIso + 'T12:00:00'), b = new Date(toIso + 'T12:00:00');
+  return Math.round((b - a) / 86400000);
+}
+function studyCountOn(iso) { return state.studyLog?.[iso] || 0; }
+function studiedToday() { return studyCountOn(dateKey(0)); }
+function goalMetToday() { return studiedToday() >= (state.dailyGoal || 10); }
+
+// Called on load. A streak only survives a gap of one day, and only by spending a
+// freeze  -  otherwise missing a day resets it.
+function refreshStreak() {
+  if (!state.studyLog) state.studyLog = {};
+  if (!state.lastGoalDate) { state.streakDays = state.streakDays || 0; return; }
+  const gap = daysBetween(state.lastGoalDate, dateKey(0));
+  if (gap <= 1) return;                          // today or yesterday: still alive
+  if (gap === 2 && (state.streakFreezes || 0) > 0) {
+    state.streakFreezes -= 1;                    // one missed day, covered
+    return;
+  }
+  state.streakDays = 0;
+}
+
+// Called whenever a study card is answered. Returns true the moment today's goal
+// is reached, so the caller can celebrate exactly once.
+function recordStudyCard() {
+  const today = dateKey(0);
+  if (!state.studyLog) state.studyLog = {};
+  state.studyLog[today] = (state.studyLog[today] || 0) + 1;
+
+  if (state.lastGoalDate === today) return false; // already counted today
+  if (state.studyLog[today] < (state.dailyGoal || 10)) return false;
+
+  const continues = state.lastGoalDate && daysBetween(state.lastGoalDate, today) <= 2;
+  state.streakDays = continues ? (state.streakDays || 0) + 1 : 1;
+  state.lastGoalDate = today;
+  if (state.streakDays > (state.bestStreak || 0)) state.bestStreak = state.streakDays;
+  // A freeze back every seventh day, capped, so the safety net refills by showing up.
+  if (state.streakDays % 7 === 0) state.streakFreezes = Math.min(2, (state.streakFreezes || 0) + 1);
+  return true;
+}
+
+// Seven dots, one per day, so the streak is something you can see a gap in.
+function streakWeekHTML() {
+  return `<div class="flex items-center justify-between gap-1">
+    ${streakWeek().map(d => `
+      <div class="flex flex-col items-center gap-1 flex-1">
+        <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${
+          d.met ? 'text-ink' : 'text-ink3'
+        }" style="${d.met
+          ? 'background:rgb(var(--c-accent-500))'
+          : d.isToday
+            ? 'background:transparent;border:1.5px dashed rgb(var(--c-accent-600))'
+            : 'background:transparent;border:1.5px solid rgb(var(--c-line))'}">
+          ${d.met ? icon('check', 'w-3.5 h-3.5') : (d.n || '')}
+        </div>
+        <span class="text-[9px] ${d.isToday ? 'text-ink font-bold' : 'text-ink3'}">${d.letter}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+// The hero of the study tab: today's goal, the streak behind it, and the week.
+function dailyGoalCardHTML() {
+  const goal = state.dailyGoal || 10;
+  const done = studiedToday();
+  const pct = Math.min(100, Math.round((done / goal) * 100));
+  const streak = state.streakDays || 0;
+  const met = goalMetToday();
+  const left = Math.max(0, goal - done);
+  return `
+    <div class="p-4 rounded-2xl bg-surface border border-line space-y-3.5">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+             style="background:rgb(var(--c-peach-100));color:rgb(var(--c-peach-700))">${icon('flame','w-6 h-6')}</div>
+        <div class="min-w-0 flex-1">
+          <div class="text-[19px] font-display font-semibold text-ink leading-none">${streak} day${streak === 1 ? '' : 's'}</div>
+          <div class="text-[11px] text-ink2 mt-1">${
+            met ? 'Goal met today. Nice.'
+                : streak > 0 ? `${left} more card${left === 1 ? '' : 's'} to keep it alive`
+                             : `${left} card${left === 1 ? '' : 's'} to start a streak`
+          }</div>
+        </div>
+        ${(state.streakFreezes || 0) > 0 ? `
+          <div class="flex items-center gap-1 px-2 py-1 rounded-full bg-surface2 shrink-0" title="Streak freeze: covers one missed day">
+            <span style="color:rgb(var(--c-sky-700))">${icon('snowflake','w-3 h-3')}</span>
+            <span class="text-[11px] font-bold text-ink2">${state.streakFreezes}</span>
+          </div>` : ''}
+      </div>
+      <div>
+        <div class="flex items-center justify-between text-[11px] text-ink2 mb-1.5">
+          <span>Today</span><span class="font-bold text-ink">${done}/${goal}</span>
+        </div>
+        <div class="w-full h-2 bg-surface2 rounded-full overflow-hidden">
+          <div class="h-full ${met ? 'bg-good' : 'bg-accent-500'}" style="width:${pct}%"></div>
+        </div>
+      </div>
+      ${streakWeekHTML()}
+    </div>`;
+}
+
+// Trailing seven days, oldest first, for the week strip.
+function streakWeek() {
+  const goal = state.dailyGoal || 10;
+  return Array.from({ length: 7 }, (_, i) => {
+    const iso = dateKey(i - 6);
+    const n = studyCountOn(iso);
+    return { iso, n, met: n >= goal, isToday: i === 6,
+             letter: new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'narrow' }) };
+  });
 }
 
 /* ============================== STATS / SCHEDULER ============================== */
@@ -2326,23 +2471,183 @@ function showProblemCompleteOverlay(ass, p) {
 function completeStudyCard(deckId, cardId, selectedIndex) {
   if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
   const correct = STUDY_DECKS.find(d=>d.id===deckId).cards.find(c=>c.id===cardId).correctIndex === selectedIndex;
-  state.studyProgress[deckId][cardId] = { selectedIndex, correct, completedAt: todayStr() };
+  // Keep the running history, not just the last answer: the mix needs to know how
+  // often a card has been missed and whether it has since been shored up.
+  const prev = state.studyProgress[deckId][cardId] || {};
+  state.studyProgress[deckId][cardId] = {
+    selectedIndex, correct, completedAt: todayStr(),
+    attempts: (prev.attempts || 0) + 1,
+    wrong: (prev.wrong || 0) + (correct ? 0 : 1),
+    streak: correct ? (prev.streak || 0) + 1 : 0,
+    lastWrongAt: correct ? (prev.lastWrongAt || null) : todayStr(),
+  };
+  const hitGoal = recordStudyCard();
   markActivity(); saveState();
-  if (correct) burstConfetti();
+  if (hitGoal) showGoalOverlay();
+  else if (correct) burstConfetti();
 }
 function completeFreeStudyCard(deckId, cardId, text) {
   if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
-  state.studyProgress[deckId][cardId] = { response: text, completedAt: todayStr() };
+  const prev = state.studyProgress[deckId][cardId] || {};
+  state.studyProgress[deckId][cardId] = {
+    response: text, completedAt: todayStr(),
+    attempts: (prev.attempts || 0) + 1, wrong: prev.wrong || 0, streak: (prev.streak || 0) + 1,
+  };
+  const hitGoal = recordStudyCard();
   markActivity(); saveState();
+  if (hitGoal) showGoalOverlay(); else burstConfetti();
+}
+
+// Fires once, the moment the day's goal is reached.
+function showGoalOverlay() {
   burstConfetti();
+  haptic([12, 60, 12]);
+  const n = state.streakDays || 1;
+  const earnedFreeze = n % 7 === 0;
+  const root = document.getElementById('overlay-root');
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
+      <div class="bg-surface border border-line rounded-2xl p-5 max-w-xs w-full space-y-4 pop text-center">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style="background:rgb(var(--c-peach-100));color:rgb(var(--c-peach-700))">
+          ${icon('flame','w-8 h-8')}
+        </div>
+        <div class="space-y-1">
+          <h3 class="text-xl font-display font-semibold text-ink tracking-tight">${n} day${n === 1 ? '' : 's'}</h3>
+          <p class="text-xs text-ink2">Goal met  -  ${state.dailyGoal} cards today.${n > 1 ? ` That's ${n} in a row.` : ''}</p>
+        </div>
+        ${streakWeekHTML()}
+        ${earnedFreeze ? `<p class="text-[11px] text-ink2">Seven days straight  -  you've earned a streak freeze.</p>` : ''}
+        <button data-action="close-streak-overlay" class="w-full py-2.5 rounded-lg grad-btn text-xs">Keep going</button>
+      </div>
+    </div>`;
 }
 
 /* ============================== TAB: STUDY ============================== */
 function renderStudyTab() {
-  const ui = state.ui;
-  if (ui.studyDeckId) return renderStudySession();
-  if (ui.studyExam) return renderDeckList(ui.studyExam);
+  if (state.ui.studyDeckId) return renderStudySession();
+  if (state.studyExam) return renderDeckList(state.studyExam);
   return renderExamGrid();
+}
+
+/* ============================== WEAKNESS MODEL ==============================
+   Every answer is recorded per card, so "weak" is something measured rather than
+   declared: a card you have missed and not yet got right twice in a row is still
+   owed, and a topic's accuracy is just its cards' answers added up. The mix leans
+   on those numbers without ever letting one topic take the whole session.
+   ========================================================================== */
+const MASTERY_STREAK = 2;    // right this many times running before a card is settled
+
+function cardStat(deckId, cardId) {
+  const r = state.studyProgress[deckId]?.[cardId];
+  return { attempts: r?.attempts || 0, wrong: r?.wrong || 0, streak: r?.streak || 0, seen: !!r };
+}
+// Cards you have missed and not yet shored up. These lead the mix.
+function isShaky(deckId, cardId) {
+  const s = cardStat(deckId, cardId);
+  return s.wrong > 0 && s.streak < MASTERY_STREAK;
+}
+function deckStats(deck) {
+  let attempts = 0, wrong = 0, seen = 0, shaky = 0;
+  deck.cards.forEach(c => {
+    const s = cardStat(deck.id, c.id);
+    attempts += s.attempts; wrong += s.wrong;
+    if (s.seen) seen++;
+    if (isShaky(deck.id, c.id)) shaky++;
+  });
+  return {
+    deck, attempts, wrong, seen, shaky,
+    total: deck.cards.length,
+    accuracy: attempts ? (attempts - wrong) / attempts : null,  // null = untested
+  };
+}
+function examTopics(examKey) {
+  return STUDY_DECKS.filter(d => d.exam === examKey).map(deckStats);
+}
+// Weakest first; topics you have never touched sit in the middle rather than the
+// top, so the mix doesn't ignore a genuinely weak topic in favour of a new one.
+function weakestTopics(examKey) {
+  return examTopics(examKey)
+    .filter(t => t.attempts > 0)
+    .sort((a, b) => a.accuracy - b.accuracy);
+}
+
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+// Pick an index from `weights` proportionally.
+function weightedPick(weights) {
+  const total = weights.reduce((s, w) => s + w, 0);
+  if (total <= 0) return Math.floor(Math.random() * weights.length);
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r <= 0) return i; }
+  return weights.length - 1;
+}
+
+/* Builds a session that leans into weak spots while staying varied.
+
+   Roughly half the queue is cards you have actually missed, a third is material
+   you have never seen, and the rest is revision. Within the unseen and revision
+   pools, topics are sampled by weakness, so a shaky topic comes up more often
+   without ever being the only thing you see. A per-topic cap keeps one weak
+   topic from swallowing the session. */
+function buildMixedQueue(examKey, size) {
+  const n = Math.max(5, size || state.dailyGoal || 10);
+  const topics = examTopics(examKey);
+  if (!topics.length) return [];
+
+  const pools = { shaky: [], unseen: [], review: [] };
+  topics.forEach(t => t.deck.cards.forEach(c => {
+    const ref = { deckId: t.deck.id, cardId: c.id };
+    if (isShaky(t.deck.id, c.id)) pools.shaky.push(ref);
+    else if (!cardStat(t.deck.id, c.id).seen) pools.unseen.push(ref);
+    else pools.review.push(ref);
+  }));
+
+  // Weakness weight per topic: lower accuracy pulls harder, untested sits mid.
+  const weightFor = {};
+  topics.forEach(t => { weightFor[t.deck.id] = t.accuracy === null ? 0.5 : (1 - t.accuracy) + 0.15; });
+
+  const perTopicCap = Math.max(2, Math.ceil(n * 0.6));
+  const takenFrom = {};
+  const out = [];
+  const push = ref => {
+    if (out.length >= n) return false;
+    if ((takenFrom[ref.deckId] || 0) >= perTopicCap) return false;
+    if (out.some(o => o.deckId === ref.deckId && o.cardId === ref.cardId)) return false;
+    takenFrom[ref.deckId] = (takenFrom[ref.deckId] || 0) + 1;
+    out.push(ref);
+    return true;
+  };
+
+  // Shaky cards first, weakest topics leading, so the session is built around them.
+  shuffled(pools.shaky)
+    .sort((a, b) => weightFor[b.deckId] - weightFor[a.deckId])
+    .slice(0, Math.ceil(n * 0.5))
+    .forEach(push);
+
+  // Then fill from the other pools, sampling topics by weakness for variety.
+  const fill = (pool, target) => {
+    const byTopic = {};
+    pool.forEach(r => (byTopic[r.deckId] = byTopic[r.deckId] || []).push(r));
+    Object.keys(byTopic).forEach(k => { byTopic[k] = shuffled(byTopic[k]); });
+    let guard = pool.length + 8;
+    while (out.length < target && guard-- > 0) {
+      const keys = Object.keys(byTopic).filter(k => byTopic[k].length);
+      if (!keys.length) break;
+      const k = keys[weightedPick(keys.map(key => weightFor[key] || 0.2))];
+      const ref = byTopic[k].pop();
+      if (!push(ref) && out.length >= n) break;
+    }
+  };
+  fill(pools.unseen, Math.min(n, out.length + Math.ceil(n * 0.35)));
+  fill(pools.review, n);
+  fill(pools.unseen, n);          // second pass in case review ran dry
+  fill(pools.shaky, n);           // and finally let shaky cards top it up
+
+  // Interleave so it never reads as "all your mistakes, then everything else".
+  return shuffled(out);
 }
 
 function examProgress(examKey) {
@@ -2366,56 +2671,146 @@ function renderExamGrid() {
         <div class="w-full h-1 bg-surface2 rounded-full overflow-hidden"><div class="h-full bg-accent-500" style="width:${pct}%"></div></div>
       </button>`;
   }).join('');
-  const doneToday = countStudyDoneToday();
   return `<div class="p-4 space-y-4">
-    ${sectionRuleHTML('Test Prep', 'Practice sets for standardized tests, kept separate from your homework.')}
+    ${dailyGoalCardHTML()}
+    ${sectionRuleHTML('Test prep', 'Pick the exam you are studying for. We’ll remember it.')}
     <div class="grid grid-cols-2 gap-3">${cards}</div>
-    ${doneToday > 0 ? `<div class="p-3 rounded-xl bg-surface border border-line flex items-center gap-2 text-xs text-ink2"><span class="text-accent-500 font-bold font-mono">${doneToday}</span> card${doneToday===1?'':'s'} reviewed today</div>` : ''}
   </div>`;
 }
 
 function renderDeckList(examKey) {
-  const decks = STUDY_DECKS.filter(d => d.exam === examKey);
-  const rows = decks.map(d => {
-    const total = d.cards.length, done = d.cards.filter(c => isCardDone(d.id, c.id)).length;
-    const correct = d.cards.filter(c => state.studyProgress[d.id]?.[c.id]?.correct).length;
+  const topics = examTopics(examKey);
+  const rows = topics.map(t => {
+    const d = t.deck;
+    const pct = t.accuracy === null ? null : Math.round(t.accuracy * 100);
     return `
-      <button data-action="start-deck" data-deck="${d.id}" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between text-left">
-        <div><div class="text-xs font-bold text-ink">${escapeHtml(d.title)}</div>
-          <div class="text-[10.5px] text-ink3">${done}/${total} reviewed${done ? ` &middot; ${correct}/${done} correct` : ''}</div></div>
-        ${icon('chevronRight','w-4 h-4 text-ink3')}
+      <button data-action="start-deck" data-deck="${d.id}" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between gap-3 text-left">
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-ink">${escapeHtml(d.title)}</div>
+          <div class="text-[10.5px] text-ink3">${t.seen}/${t.total} seen${pct !== null ? ` &middot; ${pct}% correct` : ''}${t.shaky ? ` &middot; ${t.shaky} to revisit` : ''}</div>
+        </div>
+        ${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}
       </button>`;
   }).join('');
+
+  // Weak spots, worst first  -  only topics you've attempted AND are actually
+  // behind on. A topic you're acing is not a weak spot and shouldn't be listed.
+  const weak = weakestTopics(examKey).filter(t => t.accuracy < 0.85).slice(0, 3);
+  const weakHTML = weak.length ? `
+    <div class="p-4 rounded-2xl bg-surface border border-line space-y-3">
+      <div class="flex items-center gap-2">
+        <span style="color:rgb(var(--c-peach-700))">${icon('target','w-4 h-4')}</span>
+        <h3 class="text-xs font-bold text-ink">Your weak spots</h3>
+      </div>
+      ${weak.map(t => {
+        const pct = Math.round(t.accuracy * 100);
+        return `<button data-action="start-deck" data-deck="${t.deck.id}" class="w-full flex items-center gap-2.5 text-[11.5px] text-left">
+          <span class="flex-1 min-w-0 truncate text-ink2">${escapeHtml(t.deck.title)}</span>
+          <div class="w-20 h-1.5 bg-surface2 rounded-full overflow-hidden shrink-0">
+            <div class="h-full ${pct >= 70 ? 'bg-good' : 'bg-accent-500'}" style="width:${pct}%"></div>
+          </div>
+          <span class="font-bold text-ink w-9 text-right shrink-0">${pct}%</span>
+        </button>`;
+      }).join('')}
+      <p class="text-[10.5px] text-ink3">A mix leans on these without only serving them.</p>
+    </div>` : '';
+
+  const shakyTotal = topics.reduce((s, t) => s + t.shaky, 0);
+  const mixSize = Math.max(5, state.dailyGoal || 10);
+  const mixedHTML = `
+    <button data-action="start-mixed" data-exam="${examKey}" class="w-full p-4 rounded-2xl text-left flex items-center gap-3.5"
+            style="background:rgb(var(--c-accent-100));border:1px solid rgb(var(--c-accent-500))">
+      <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+           style="background:rgb(var(--c-surface));color:rgb(var(--c-accent-800))">${icon('shuffle','w-5 h-5')}</div>
+      <div class="min-w-0 flex-1">
+        <div class="text-sm font-bold text-ink">Mixed practice</div>
+        <div class="text-[11px] text-ink2 mt-0.5">${mixSize} cards across every topic${shakyTotal ? `, weighted to the ${shakyTotal} you've missed` : ''}</div>
+      </div>
+      ${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}
+    </button>`;
+  const exam = EXAMS.find(e => e.key === examKey);
   return `<div class="p-4 space-y-4">
-    <button data-action="back-to-exams" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} Study</button>
-    <h2 class="text-[17px] font-display font-semibold text-ink tracking-tight">${examKey}</h2>
-    <div class="space-y-2">${rows}</div>
+    ${dailyGoalCardHTML()}
+    <div class="flex items-end justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="text-[17px] font-display font-semibold text-ink tracking-tight">${examKey}</h2>
+        <p class="text-xs text-ink2 mt-1">${exam ? escapeHtml(exam.blurb) : ''}</p>
+      </div>
+      <button data-action="back-to-exams" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-surface2 text-[11px] font-bold text-ink2">Change exam</button>
+    </div>
+    ${mixedHTML}
+    ${weakHTML}
+    <div class="space-y-2">
+      <h3 class="text-[11px] font-bold text-ink3 px-1">Or pick a topic</h3>
+      ${rows}
+    </div>
   </div>`;
 }
+
+/* A session is a queue of {deckId, cardId}, which is what lets a mixed run cross
+   topics. A single-topic run is just the queue that happens to hold one deck. */
+function startSession(queue, meta) {
+  state.ui.studyQueue = queue;
+  state.ui.studyMeta = meta;
+  state.ui.studyCardIndex = 0;
+  state.ui.studyDeckId = meta.deckId || '__mixed__';
+}
+function currentQueue() { return state.ui.studyQueue || []; }
 
 function renderStudySession() {
-  const deck = getDeck(state.ui.studyDeckId);
+  const queue = currentQueue();
+  const meta = state.ui.studyMeta || {};
+  if (!queue.length) { state.ui.studyDeckId = null; return renderStudyTab(); }
   const idx = state.ui.studyCardIndex;
-  if (idx >= deck.cards.length) return renderStudySummary(deck);
-  const card = deck.cards[idx];
+  if (idx >= queue.length) return renderStudySummary();
+  const { deckId, cardId } = queue[idx];
+  const deck = getDeck(deckId);
+  const card = deck.cards.find(c => c.id === cardId);
+  if (!card) { state.ui.studyCardIndex++; return renderStudySession(); }
   return `<div class="p-4 space-y-3">
-    <button data-action="exit-deck" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} ${deck.exam} &middot; ${escapeHtml(deck.title)}</button>
-    ${studyCardHTML(deck, card, `Card ${idx+1} of ${deck.cards.length}`, 'study-session-next')}
+    <button data-action="exit-deck" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} ${escapeHtml(meta.label || deck.exam)}</button>
+    ${isShaky(deckId, cardId) ? `
+      <div class="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg" style="background:rgb(var(--c-peach-100));color:rgb(var(--c-peach-700))">
+        ${icon('target','w-3.5 h-3.5')} You missed this one before
+      </div>` : ''}
+    ${studyCardHTML(deck, card, `Card ${idx+1} of ${queue.length}`, 'study-session-next')}
   </div>`;
 }
 
-function renderStudySummary(deck) {
-  const results = deck.cards.map(c => state.studyProgress[deck.id]?.[c.id]);
-  const correct = results.filter(r => r && r.correct).length;
+function renderStudySummary() {
+  const queue = currentQueue();
+  const meta = state.ui.studyMeta || {};
+  const correct = queue.filter(q => state.studyProgress[q.deckId]?.[q.cardId]?.correct).length;
+  const graded = queue.filter(q => getDeck(q.deckId).cards.find(c => c.id === q.cardId)?.kind !== 'free').length;
+
+  // Per-topic breakdown, which is the part that tells you where to go next.
+  const byTopic = {};
+  queue.forEach(q => {
+    const t = byTopic[q.deckId] || (byTopic[q.deckId] = { title: getDeck(q.deckId).title, n: 0, ok: 0 });
+    t.n++; if (state.studyProgress[q.deckId]?.[q.cardId]?.correct) t.ok++;
+  });
+  const rows = Object.entries(byTopic).map(([deckId, t]) => {
+    const pct = t.n ? Math.round((t.ok / t.n) * 100) : 0;
+    return `<div class="flex items-center gap-2.5 text-[11.5px]">
+      <span class="flex-1 min-w-0 truncate text-ink2 text-left">${escapeHtml(t.title)}</span>
+      <div class="w-20 h-1.5 bg-surface2 rounded-full overflow-hidden shrink-0">
+        <div class="h-full ${pct >= 70 ? 'bg-good' : 'bg-accent-500'}" style="width:${pct}%"></div>
+      </div>
+      <span class="font-bold text-ink w-10 text-right shrink-0">${t.ok}/${t.n}</span>
+    </div>`;
+  }).join('');
+
+  const stillShaky = queue.filter(q => isShaky(q.deckId, q.cardId)).length;
   return `<div class="p-4 space-y-4">
-    <div class="p-8 text-center bg-surface border border-line rounded-xl space-y-3 enter">
+    <div class="p-6 text-center bg-surface border border-line rounded-2xl space-y-3 enter">
       ${mascotBadgeHTML('w-14 h-14')}
-      <h3 class="text-base font-display font-semibold text-ink tracking-tight">Deck complete</h3>
-      <p class="text-3xl font-display font-semibold text-ink">${correct}<span class="text-ink3 text-lg">/${deck.cards.length}</span></p>
-      <p class="text-xs text-ink2">correct on ${escapeHtml(deck.title)}</p>
-      <div class="flex items-center justify-center gap-2 pt-1">
-        <button data-action="exit-deck" class="px-3.5 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Back to ${deck.exam}</button>
-        <button data-action="retry-deck" data-deck="${deck.id}" class="px-3.5 py-2 rounded-lg grad-btn text-xs">Review again</button>
+      <h3 class="text-base font-display font-semibold text-ink tracking-tight">${escapeHtml(meta.label || 'Session')} complete</h3>
+      <p class="text-3xl font-display font-semibold text-ink">${correct}<span class="text-ink3 text-lg">/${graded || queue.length}</span></p>
+      <p class="text-xs text-ink2">${stillShaky ? `${stillShaky} card${stillShaky === 1 ? '' : 's'} still to nail` : 'Nothing outstanding from this set'}</p>
+      ${rows ? `<div class="space-y-2 pt-2 text-left">${rows}</div>` : ''}
+      <div class="flex items-center justify-center gap-2 pt-2">
+        <button data-action="exit-deck" class="px-3.5 py-2 rounded-xl bg-surface2 text-ink text-xs font-bold">Done</button>
+        <button data-action="start-mixed" data-exam="${escapeHtml(meta.examKey || '')}" class="px-3.5 py-2 rounded-lg grad-btn text-xs">Another mix</button>
       </div>
     </div>
   </div>`;
@@ -2579,6 +2974,21 @@ function openSettingsSheet() {
           <div><div class="text-lg font-display font-bold text-ink">${state.assignments.length}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Assignments</div></div>
           <div><div class="text-lg font-display font-bold text-ink">${totalStepsDone()}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Steps done</div></div>
           <div><div class="text-lg font-display font-bold text-ink">${state.streakDays || 0}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Day streak</div></div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Daily goal</h4>
+          <p class="text-[11px] text-ink2 px-1 leading-relaxed">Cards to review each day to keep your streak. Best so far: ${state.bestStreak || 0} day${(state.bestStreak || 0) === 1 ? '' : 's'}.</p>
+          <div class="grid grid-cols-3 gap-2">
+            ${GOAL_CHOICES.map(g => {
+              const on = (state.dailyGoal || 10) === g;
+              return `<button data-action="set-daily-goal" data-goal="${g}"
+                class="p-3 rounded-xl flex flex-col items-center gap-0.5 ${on ? 'bg-accent-50 border border-accent-500' : 'bg-surface border border-line'}">
+                <span class="text-base font-display font-bold ${on ? 'text-ink' : 'text-ink2'}">${g}</span>
+                <span class="text-[9.5px] text-ink3">cards</span>
+              </button>`;
+            }).join('')}
+          </div>
         </div>
 
         <div class="space-y-2">
@@ -2866,15 +3276,31 @@ document.addEventListener('click', e => {
     openExportSheet(t.dataset.ass);
   }
 
-  else if (a === 'open-exam') { state.ui.studyExam = t.dataset.exam; render(); }
-  else if (a === 'back-to-exams') { state.ui.studyExam = null; render(); }
-  else if (a === 'start-deck') { state.ui.studyDeckId = t.dataset.deck; state.ui.studyCardIndex = 0; render(); }
+  else if (a === 'open-exam') { state.studyExam = t.dataset.exam; saveState(); render(); }
+  else if (a === 'back-to-exams') { state.studyExam = null; saveState(); render(); }
+  else if (a === 'set-daily-goal') { state.dailyGoal = Number(t.dataset.goal) || 10; saveState(); openSettingsSheet(); }
+  else if (a === 'start-deck') {
+    const deck = getDeck(t.dataset.deck);
+    startSession(deck.cards.map(c => ({ deckId: deck.id, cardId: c.id })),
+                 { kind: 'deck', deckId: deck.id, examKey: deck.exam, label: deck.title });
+    render();
+  }
+  else if (a === 'start-mixed') {
+    const examKey = t.dataset.exam || state.studyExam;
+    const queue = buildMixedQueue(examKey);
+    if (!queue.length) { toast('No cards available yet'); return; }
+    startSession(queue, { kind: 'mixed', examKey, label: `${examKey} mix` });
+    render();
+  }
   else if (a === 'retry-deck') {
     const deck = getDeck(t.dataset.deck);
     deck.cards.forEach(c => { if (state.studyProgress[deck.id]) delete state.studyProgress[deck.id][c.id]; });
     state.ui.studyCardIndex = 0; render();
   }
-  else if (a === 'exit-deck') { state.ui.studyDeckId = null; state.ui.studyCardIndex = 0; render(); }
+  else if (a === 'exit-deck') {
+    state.ui.studyDeckId = null; state.ui.studyQueue = null; state.ui.studyMeta = null; state.ui.studyCardIndex = 0;
+    render();
+  }
   else if (a === 'study-select') {
     const key = `study_${t.dataset.deck}_${t.dataset.card}`;
     state.ui.draftAnswers[key] = { index: Number(t.dataset.idx), checked: false };
@@ -2903,6 +3329,8 @@ document.addEventListener('click', e => {
   else if (a === 'set-theme') setTheme(t.dataset.themeMode);
   else if (a === 'close-settings') { document.getElementById('overlay-root').innerHTML = ''; }
   else if (a === 'close-overlay-generic') { document.getElementById('overlay-root').innerHTML = ''; }
+  // The streak card behind the overlay is now stale, so redraw on the way out.
+  else if (a === 'close-streak-overlay') { document.getElementById('overlay-root').innerHTML = ''; render(); }
   else if (a === 'export-data') exportAllData();
   else if (a === 'trigger-import-data') document.getElementById('import-file-input')?.click();
   else if (a === 'ask-clear-data') { state.ui.confirmClearData = true; openSettingsSheet(); }
@@ -2955,8 +3383,9 @@ document.addEventListener('input', e => {
 
 /* ============================== BOOT ============================== */
 loadState();
+refreshStreak();
 applyTheme();
-switchTab(state.ui.tab || 'feed');
+switchTab(state.ui.tab || 'study');
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
