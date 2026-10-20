@@ -476,6 +476,7 @@ const ICONS = {
   wand: '<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 6.2l1.4-1.4M17.8 11.8l1.4 1.4M12.2 6.2l-1.4-1.4"/><path d="M5 21l11-11"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16 16"/>',
   filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+  infinity: '<path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/>',
 };
 function icon(name, cls) {
   return `<svg class="${cls || 'w-4 h-4'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
@@ -2923,7 +2924,8 @@ let state = {
   // was opened, so it stays worth something. studyLog keeps a per-day tally, which
   // is what the week strip reads and what makes the count resilient to cards being
   // reviewed more than once.
-  dailyGoal: 10,
+  dailyGoal: 10,           // cards per DAY, reached across however many sittings
+  sessionSize: 10,         // cards in one practice set  -  deliberately not the goal
   studyLog: {},            // 'YYYY-MM-DD' -> cards reviewed that day
   streakDays: 0,
   bestStreak: 0,
@@ -2934,6 +2936,7 @@ let state = {
   themeChosen: false,// true once the user picks a mode in Settings themselves
   ui: { tab: 'study', workView: 'list', workAssignmentId: null, workPlayer: null,
         studyDeckId: null, studyCardIndex: 0, studySession: null, studyQueue: null, studyMeta: null,
+        studyResults: [], studyEnded: false,
         draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false,
         librarySearch: '', librarySubject: 'All', libraryHideDone: false }
 };
@@ -2950,6 +2953,10 @@ function loadState() {
     state.assignments = [JSON.parse(JSON.stringify(CALC_SAMPLE))];
   }
   if (!state.studyProgress) state.studyProgress = {};
+  // Session length used to BE the daily goal, so anyone who had raised their goal
+  // was taking that many cards in one sitting. Carry it across as their session
+  // length rather than silently shortening the sets they were used to.
+  if (!state.sessionSize) state.sessionSize = Math.min(25, Math.max(5, state.dailyGoal || 10));
   // Appearance briefly defaulted to System, which dropped anyone on a dark device
   // into dark mode. Light is the intended default, so move saves that never had a
   // deliberate choice across to it; anything the user picked themselves stands.
@@ -2977,7 +2984,21 @@ function markActivity() {
 }
 
 /* ============================== DAILY STREAK ============================== */
-const GOAL_CHOICES = [5, 10, 20];
+/* A daily goal is a total for the day, not the length of one sitting, so it can go
+   well past what anyone would answer in one go. Session length is set separately
+   and stays short  -  that separation is the point: a 60-card day is six short
+   sets between classes, not one long one. */
+const GOAL_CHOICES = [5, 10, 20, 30, 50, 100];
+const GOAL_MIN = 1, GOAL_MAX = 500;
+const SESSION_SIZES = [5, 10, 15, 20, 25];
+const ENDLESS_BATCH = 8;          // cards minted at a time during an endless run
+function sessionSize() { return state.sessionSize || 10; }
+function setDailyGoal(n) {
+  const v = Math.max(GOAL_MIN, Math.min(GOAL_MAX, Math.round(n) || 10));
+  state.dailyGoal = v;
+  saveState(); openSettingsSheet();
+  toast(`Daily goal: ${v} card${v === 1 ? '' : 's'}`);
+}
 
 function dateKey(offsetDays) {
   const d = new Date();
@@ -3090,7 +3111,9 @@ function streakWeek() {
   return Array.from({ length: 7 }, (_, i) => {
     const iso = dateKey(i - 6);
     const n = studyCountOn(iso);
-    return { iso, n, met: n >= goal, isToday: i === 6,
+    // Raising the goal after today's was already met shouldn't un-light today.
+    const met = n >= goal || (i === 6 && state.lastGoalDate === iso);
+    return { iso, n, met, isToday: i === 6,
              letter: new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'narrow' }) };
   });
 }
@@ -3333,13 +3356,16 @@ function freeBlockHTML(ass, p, s, draftKey) {
   `;
 }
 
-function studyCardHTML(deck, card, badgeText, sessionNav) {
+function studyCardHTML(deck, card, badgeText, sessionNav, slot) {
   // Generated cards key their draft on the instance id so a re-roll of the same
-  // skill starts clean rather than inheriting the previous question's answer.
+  // skill starts clean rather than inheriting the previous question's answer. The
+  // slot is appended because an endless run can serve one skill several times,
+  // and each showing has to be answerable on its own.
   const skillId = card.skillId || card.id;
-  const draftKey = `study_${deck.id}_${card.id}`;
+  const draftKey = `study_${deck.id}_${card.id}${slot === undefined ? '' : `_${slot}`}`;
   const sel = state.ui.draftAnswers[draftKey];
   const showResult = sel !== undefined && sel.checked;
+  const freeDone = sel?.submitted === true;
   const header = `
       <div class="flex items-center justify-between border-b border-linesoft pb-2.5">
         <div>
@@ -3359,7 +3385,7 @@ function studyCardHTML(deck, card, badgeText, sessionNav) {
           class="w-full bg-bg border border-line rounded-xl p-3 text-[12.5px] text-ink focus:border-accent-500 transition no-scrollbar">${escapeHtml(draft)}</textarea>
         <div class="flex items-center justify-between pt-1">
           <span class="text-[10px] text-ink3">Self-reviewed</span>
-          <button data-action="${isCardDone(deck.id, skillId) ? sessionNav : 'study-free-done'}" data-deck="${deck.id}" data-card="${card.id}" data-skill="${skillId}" class="px-4 py-2 rounded-lg grad-btn text-xs flex items-center gap-1.5">${isCardDone(deck.id, skillId) ? `Next ${icon('chevronRight','w-3.5 h-3.5')}` : 'Mark Reviewed'}</button>
+          <button data-action="${freeDone ? sessionNav : 'study-free-done'}" data-deck="${deck.id}" data-card="${card.id}" data-skill="${skillId}" data-key="${draftKey}" class="px-4 py-2 rounded-lg grad-btn text-xs flex items-center gap-1.5">${freeDone ? `Next ${icon('chevronRight','w-3.5 h-3.5')}` : 'Mark Reviewed'}</button>
         </div>
       </div>`;
   }
@@ -3373,7 +3399,7 @@ function studyCardHTML(deck, card, badgeText, sessionNav) {
           if (showResult) { if (idx === card.correctIndex) cls = 'correct'; else if (idx === sel.index) cls = 'wrong'; }
           else if (sel && sel.index === idx) cls = 'selected';
           return `
-            <button data-action="study-select" data-deck="${deck.id}" data-card="${card.id}" data-skill="${skillId}" data-idx="${idx}"
+            <button data-action="study-select" data-deck="${deck.id}" data-card="${card.id}" data-skill="${skillId}" data-key="${draftKey}" data-idx="${idx}"
                     class="option-btn w-full p-3 rounded-xl border border-line bg-bg/60 text-left flex items-center gap-3 ${cls}">
               <span class="bubble w-6 h-6 rounded-full border border-line flex items-center justify-center text-[11px] font-bold shrink-0">${String.fromCharCode(65 + idx)}</span>
               <span class="text-[12.5px] text-ink math flex-1">${opt}</span>
@@ -3389,7 +3415,7 @@ function studyCardHTML(deck, card, badgeText, sessionNav) {
       <div class="flex items-center justify-between pt-1">
         <span></span>
         ${!showResult
-          ? `<button data-action="study-check" data-deck="${deck.id}" data-card="${card.id}" data-skill="${skillId}" class="px-4 py-2 rounded-lg grad-btn text-xs">Check</button>`
+          ? `<button data-action="study-check" data-deck="${deck.id}" data-card="${card.id}" data-skill="${skillId}" data-key="${draftKey}" class="px-4 py-2 rounded-lg grad-btn text-xs">Check</button>`
           : `<button data-action="${sessionNav}" data-deck="${deck.id}" data-card="${card.id}" class="px-4 py-2 rounded-lg grad-btn text-xs flex items-center gap-1.5">Next ${icon('chevronRight','w-3.5 h-3.5')}</button>`}
       </div>
     </div>
@@ -4426,37 +4452,48 @@ function showProblemCompleteOverlay(ass, p) {
 
 // The live question is the one in the session queue, since a generated card does
 // not exist anywhere else  -  its numbers were minted for this attempt.
-function queuedCard(deckId, skillId) {
-  return currentQueue().find(c => c.deckId === deckId && c.skillId === skillId);
+/* Resolve by INSTANCE id first, falling back to the skill. A session can hold the
+   same skill twice with different numbers, and answer order is shuffled per
+   instance, so matching on the skill alone would grade the second showing against
+   the first one's correct slot. */
+function queuedCard(deckId, cardId, skillId) {
+  const q = currentQueue();
+  return q.find(c => c.deckId === deckId && c.id === cardId)
+      || q.find(c => c.deckId === deckId && c.skillId === (skillId || cardId));
 }
 
-function completeStudyCard(deckId, cardId, selectedIndex) {
+function completeStudyCard(deckId, skillId, selectedIndex, cardId) {
   if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
-  const live = queuedCard(deckId, cardId);
-  const fallback = getDeck(deckId)?.cards?.find(c => c.id === cardId);
+  const live = queuedCard(deckId, cardId || skillId, skillId);
+  const fallback = getDeck(deckId)?.cards?.find(c => c.id === skillId);
   const correct = (live || fallback)?.correctIndex === selectedIndex;
   // Keep the running history, not just the last answer: the mix needs to know how
   // often a skill has been missed and whether it has since been shored up.
-  const prev = state.studyProgress[deckId][cardId] || {};
-  state.studyProgress[deckId][cardId] = {
+  // Progress keys on the SKILL, not the instance: "still shaky on systems of
+  // equations" is the fact worth keeping, and it has to survive the question
+  // itself being different numbers every time.
+  const prev = state.studyProgress[deckId][skillId] || {};
+  state.studyProgress[deckId][skillId] = {
     selectedIndex, correct, completedAt: todayStr(),
     attempts: (prev.attempts || 0) + 1,
     wrong: (prev.wrong || 0) + (correct ? 0 : 1),
     streak: correct ? (prev.streak || 0) + 1 : 0,
     lastWrongAt: correct ? (prev.lastWrongAt || null) : todayStr(),
   };
+  recordSessionResult(deckId, skillId, correct, true);
   const hitGoal = recordStudyCard();
   markActivity(); saveState();
   if (hitGoal) showGoalOverlay();
   else if (correct) burstConfetti();
 }
-function completeFreeStudyCard(deckId, cardId, text) {
+function completeFreeStudyCard(deckId, skillId, text) {
   if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
-  const prev = state.studyProgress[deckId][cardId] || {};
-  state.studyProgress[deckId][cardId] = {
+  const prev = state.studyProgress[deckId][skillId] || {};
+  state.studyProgress[deckId][skillId] = {
     response: text, completedAt: todayStr(),
     attempts: (prev.attempts || 0) + 1, wrong: prev.wrong || 0, streak: (prev.streak || 0) + 1,
   };
+  recordSessionResult(deckId, skillId, true, false);
   const hitGoal = recordStudyCard();
   markActivity(); saveState();
   if (hitGoal) showGoalOverlay(); else burstConfetti();
@@ -4604,9 +4641,14 @@ function generateCard(deckId, skillId, seed) {
    declared: a card you have missed and not yet got right twice in a row is still
    owed, and a topic's accuracy is just its cards' answers added up. The mix leans
    on those numbers without ever letting one topic take the whole session.
+
+   Correctness alone is not enough, though. A skill answered right three weeks ago
+   and one answered right this morning look identical to isShaky(), so without a
+   time dimension nothing ever actually comes back. Each skill therefore also sits
+   on a widening review ladder, and "due today" is a date comparison the session
+   builders consult alongside the weakness pools.
    ========================================================================== */
 const MASTERY_STREAK = 2;    // right this many times running before a card is settled
-
 function cardStat(deckId, skillId) {
   const r = state.studyProgress[deckId]?.[skillId];
   return { attempts: r?.attempts || 0, wrong: r?.wrong || 0, streak: r?.streak || 0, seen: !!r };
@@ -4671,7 +4713,7 @@ function buildDeckQueue(deck, size) {
   const templated = (deck.templates || []).length > 0;
   if (!templated) return skills.map(sk => materializeCard(sk, 0));
 
-  const n = Math.max(5, size || state.dailyGoal || 10);
+  const n = Math.max(5, size || sessionSize());
   const shaky = shuffled(skills.filter(sk => isShaky(deck.id, sk.skillId)));
   const unseen = shuffled(skills.filter(sk => !cardStat(deck.id, sk.skillId).seen));
   const rest = shuffled(skills.filter(sk => !shaky.includes(sk) && !unseen.includes(sk)));
@@ -4682,12 +4724,13 @@ function buildDeckQueue(deck, size) {
   take(rest, n);
   take(shaky, n); take(unseen, n);
   // Templates can repeat within a run with different numbers once skills run out.
+  // This is also what keeps an endless run going once the skills are exhausted.
   while (picked.length < n && skills.length) picked.push(skills[picked.length % skills.length]);
   return shuffled(picked).map(sk => materializeCard(sk, (Math.random() * 1e9) | 0));
 }
 
 function buildMixedQueue(examKey, size) {
-  const n = Math.max(5, size || state.dailyGoal || 10);
+  const n = Math.max(5, size || sessionSize());
   const topics = examTopics(examKey);
   if (!topics.length) return [];
 
@@ -4811,7 +4854,7 @@ function renderDeckList(examKey) {
     </div>` : '';
 
   const shakyTotal = topics.reduce((s, t) => s + t.shaky, 0);
-  const mixSize = Math.max(5, state.dailyGoal || 10);
+  const mixSize = Math.max(5, sessionSize());
   const mixedHTML = `
     <button data-action="start-mixed" data-exam="${examKey}" class="w-full p-4 rounded-2xl text-left flex items-center gap-3.5"
             style="background:rgb(var(--c-accent-100));border:1px solid rgb(var(--c-accent-500))">
@@ -4820,6 +4863,18 @@ function renderDeckList(examKey) {
       <div class="min-w-0 flex-1">
         <div class="text-sm font-bold text-ink">Mixed practice</div>
         <div class="text-[11px] text-ink2 mt-0.5">${mixSize} cards across every topic${shakyTotal ? `, weighted to the ${shakyTotal} you've missed` : ''}</div>
+      </div>
+      ${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}
+    </button>`;
+  // Questions are generated rather than stored, so there is no reason a set has to
+  // end. This is the same weighted mix, just without a last card.
+  const endlessHTML = `
+    <button data-action="start-endless" data-exam="${examKey}" class="w-full p-4 rounded-2xl bg-surface border border-line text-left flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+           style="background:rgb(var(--c-surface2));color:rgb(var(--c-accent-800))">${icon('infinity','w-5 h-5')}</div>
+      <div class="min-w-0 flex-1">
+        <div class="text-sm font-bold text-ink">Endless practice</div>
+        <div class="text-[11px] text-ink2 mt-0.5">New questions keep coming until you stop</div>
       </div>
       ${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}
     </button>`;
@@ -4834,6 +4889,7 @@ function renderDeckList(examKey) {
       <button data-action="back-to-exams" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-surface2 text-[11px] font-bold text-ink2">Change exam</button>
     </div>
     ${mixedHTML}
+    ${endlessHTML}
     ${weakHTML}
     <div class="space-y-2">
       <h3 class="text-[11px] font-bold text-ink3 px-1">Or pick a topic</h3>
@@ -4849,39 +4905,97 @@ function startSession(queue, meta) {
   state.ui.studyMeta = meta;
   state.ui.studyCardIndex = 0;
   state.ui.studyDeckId = meta.deckId || '__mixed__';
+  state.ui.studyResults = [];
+  state.ui.studyEnded = false;
 }
 function currentQueue() { return state.ui.studyQueue || []; }
 
-function renderStudySession() {
-  const queue = currentQueue();
+/* An endless run is a normal session that tops itself up. Nothing about a card
+   changes  -  the queue just grows by another batch whenever you reach the end of
+   it, built by the same weakness-weighted logic as a fixed set, so an hour of
+   endless practice still leans on what you keep missing. Returns false only when
+   there is genuinely nothing to generate, which ends the run rather than hanging. */
+function extendSession(by) {
   const meta = state.ui.studyMeta || {};
-  if (!queue.length) { state.ui.studyDeckId = null; return renderStudyTab(); }
+  const n = Math.max(1, by || ENDLESS_BATCH);
+  const deck = meta.deckId ? getDeck(meta.deckId) : null;
+  let batch = deck ? buildDeckQueue(deck, n) : buildMixedQueue(meta.examKey, n);
+  batch = (batch || []).filter(Boolean);
+  if (!batch.length) return false;
+  // A deck of static cards hands back the same cards in the same order every
+  // time, so shuffle and re-key each instance: without a distinct id the second
+  // showing would inherit the first one's answer and render as already done.
+  const base = currentQueue().length;
+  batch = shuffled(batch).map((c, i) => Object.assign({}, c, { id: `${c.id}@${base + i}` }));
+  state.ui.studyQueue = currentQueue().concat(batch);
+  return true;
+}
+
+// One row per card actually answered in this session. The queue can't stand in
+// for this: an endless run serves the same skill more than once with different
+// numbers, and progress keys on the skill, so the queue alone can't tell a
+// repeat from a first attempt.
+function recordSessionResult(deckId, skillId, correct, graded) {
+  if (!state.ui.studyDeckId) return;
+  if (!state.ui.studyResults) state.ui.studyResults = [];
+  state.ui.studyResults.push({ deckId, skillId, correct: !!correct, graded: graded !== false });
+}
+
+function renderStudySession() {
+  const meta = state.ui.studyMeta || {};
+  if (!currentQueue().length) { state.ui.studyDeckId = null; return renderStudyTab(); }
+  if (state.ui.studyEnded) return renderStudySummary();
+
   const idx = state.ui.studyCardIndex;
-  if (idx >= queue.length) return renderStudySummary();
-  const card = queue[idx];
+  const fixedLength = currentQueue().length;
+  // An endless run tops itself up as you reach the end of the queue, so the only
+  // thing that finishes a session is you deciding to stop.
+  if (meta.endless && idx >= fixedLength - 1) extendSession();
+  if (idx >= currentQueue().length) return renderStudySummary();
+
+  const card = currentQueue()[idx];
   const deck = getDeck(card.deckId);
   const deckId = card.deckId, skillId = card.skillId;
+  const goal = state.dailyGoal || 10, done = studiedToday();
+  const pct = Math.min(100, Math.round((done / goal) * 100));
+
   return `<div class="p-4 space-y-3">
-    <button data-action="exit-deck" class="flex items-center gap-1.5 text-xs font-bold text-ink2">${icon('arrowLeft','w-4 h-4')} ${escapeHtml(meta.label || deck.exam)}</button>
+    <div class="flex items-center justify-between gap-2">
+      <button data-action="exit-deck" class="flex items-center gap-1.5 text-xs font-bold text-ink2 min-w-0">${icon('arrowLeft','w-4 h-4 shrink-0')} <span class="truncate">${escapeHtml(meta.label || deck.exam)}</span></button>
+      ${meta.endless ? `<button data-action="end-session" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-surface2 border border-line text-[11px] font-bold text-ink2">Finish</button>` : ''}
+    </div>
+    ${meta.endless ? `
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] text-ink3 shrink-0">Today</span>
+        <div class="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden">
+          <div class="h-full ${goalMetToday() ? 'bg-good' : 'bg-accent-500'}" style="width:${pct}%"></div>
+        </div>
+        <span class="text-[10px] font-bold text-ink shrink-0">${done}/${goal}</span>
+      </div>` : ''}
     ${isShaky(deckId, skillId) ? `
       <div class="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg" style="background:rgb(var(--c-peach-100));color:rgb(var(--c-peach-700))">
         ${icon('target','w-3.5 h-3.5')} You missed this one before
       </div>` : ''}
-    ${studyCardHTML(deck, card, `Card ${idx+1} of ${queue.length}`, 'study-session-next')}
+    ${studyCardHTML(deck, card,
+        meta.endless ? `Card ${idx + 1}` : `Card ${idx + 1} of ${fixedLength}`,
+        'study-session-next', idx)}
   </div>`;
 }
 
+/* Reads the session's own answer log rather than the queue. An endless run can
+   serve the same skill more than once with different numbers, and progress keys on
+   the skill, so counting the queue would collapse those repeats into one. */
 function renderStudySummary() {
-  const queue = currentQueue();
   const meta = state.ui.studyMeta || {};
-  const correct = queue.filter(q => state.studyProgress[q.deckId]?.[q.skillId]?.correct).length;
-  const graded = queue.filter(q => q.kind !== 'free').length;
+  const results = state.ui.studyResults || [];
+  const correct = results.filter(r => r.graded && r.correct).length;
+  const graded = results.filter(r => r.graded).length;
 
   // Per-topic breakdown, which is the part that tells you where to go next.
   const byTopic = {};
-  queue.forEach(q => {
-    const t = byTopic[q.deckId] || (byTopic[q.deckId] = { title: getDeck(q.deckId).title, n: 0, ok: 0 });
-    t.n++; if (state.studyProgress[q.deckId]?.[q.skillId]?.correct) t.ok++;
+  results.forEach(r => {
+    const t = byTopic[r.deckId] || (byTopic[r.deckId] = { title: getDeck(r.deckId)?.title || r.deckId, n: 0, ok: 0 });
+    t.n++; if (r.correct) t.ok++;
   });
   const rows = Object.entries(byTopic).map(([deckId, t]) => {
     const pct = t.n ? Math.round((t.ok / t.n) * 100) : 0;
@@ -4894,17 +5008,47 @@ function renderStudySummary() {
     </div>`;
   }).join('');
 
-  const stillShaky = queue.filter(q => isShaky(q.deckId, q.skillId)).length;
+  // Count distinct skills, not answers: missing the same skill twice in an endless
+  // run is one thing left to nail, not two.
+  const shakyKeys = new Set();
+  results.forEach(r => { if (isShaky(r.deckId, r.skillId)) shakyKeys.add(`${r.deckId}|${r.skillId}`); });
+  const stillShaky = shakyKeys.size;
+
+  if (!results.length) {
+    return `<div class="p-4 space-y-4">
+      <div class="p-6 text-center bg-surface border border-line rounded-2xl space-y-3 enter">
+        ${mascotBadgeHTML('w-14 h-14')}
+        <h3 class="text-base font-display font-semibold text-ink tracking-tight">Nothing answered yet</h3>
+        <p class="text-xs text-ink2">Start a set whenever you have a couple of minutes.</p>
+        <div class="flex items-center justify-center gap-2 pt-1">
+          <button data-action="exit-deck" class="px-3.5 py-2 rounded-xl bg-surface2 text-ink text-xs font-bold">Back</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const goal = state.dailyGoal || 10, doneToday = studiedToday();
   return `<div class="p-4 space-y-4">
     <div class="p-6 text-center bg-surface border border-line rounded-2xl space-y-3 enter">
       ${mascotBadgeHTML('w-14 h-14')}
       <h3 class="text-base font-display font-semibold text-ink tracking-tight">${escapeHtml(meta.label || 'Session')} complete</h3>
-      <p class="text-3xl font-display font-semibold text-ink">${correct}<span class="text-ink3 text-lg">/${graded || queue.length}</span></p>
-      <p class="text-xs text-ink2">${stillShaky ? `${stillShaky} card${stillShaky === 1 ? '' : 's'} still to nail` : 'Nothing outstanding from this set'}</p>
+      <p class="text-3xl font-display font-semibold text-ink">${correct}<span class="text-ink3 text-lg">/${graded || results.length}</span></p>
+      <p class="text-xs text-ink2">${results.length} card${results.length === 1 ? '' : 's'} this set &middot; ${
+        stillShaky ? `${stillShaky} still to nail` : 'nothing outstanding'
+      }</p>
+      <p class="text-[11px] text-ink3">${
+        goalMetToday() ? `Today's goal is done  -  ${doneToday}/${goal}.`
+                       : `${Math.max(0, goal - doneToday)} more today to hit your goal of ${goal}.`
+      }</p>
       ${rows ? `<div class="space-y-2 pt-2 text-left">${rows}</div>` : ''}
-      <div class="flex items-center justify-center gap-2 pt-2">
-        <button data-action="exit-deck" class="px-3.5 py-2 rounded-xl bg-surface2 text-ink text-xs font-bold">Done</button>
-        <button data-action="start-mixed" data-exam="${escapeHtml(meta.examKey || '')}" class="px-3.5 py-2 rounded-lg grad-btn text-xs">Another mix</button>
+      <div class="space-y-2 pt-2">
+        <button data-action="continue-endless" class="w-full py-2.5 rounded-lg grad-btn text-xs flex items-center justify-center gap-1.5">
+          ${icon('infinity','w-4 h-4')} Keep going
+        </button>
+        <div class="flex items-center gap-2">
+          <button data-action="exit-deck" class="flex-1 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Done</button>
+          ${meta.examKey ? `<button data-action="start-mixed" data-exam="${escapeHtml(meta.examKey)}" class="flex-1 py-2 rounded-xl bg-surface border border-line text-ink text-xs font-bold">Another mix</button>` : ''}
+        </div>
       </div>
     </div>
   </div>`;
@@ -5057,6 +5201,7 @@ function totalCardsReviewed() {
 
 function openSettingsSheet() {
   const root = document.getElementById('overlay-root');
+  const goalIsPreset = GOAL_CHOICES.includes(state.dailyGoal || 10);
   root.innerHTML = `
     <div class="absolute inset-0 bg-bg z-50 flex flex-col">
       <div class="app-header p-4 border-b border-line flex items-center justify-between bg-bg shrink-0">
@@ -5072,7 +5217,7 @@ function openSettingsSheet() {
 
         <div class="space-y-2">
           <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Daily goal</h4>
-          <p class="text-[11px] text-ink2 px-1 leading-relaxed">Cards to review each day to keep your streak. Best so far: ${state.bestStreak || 0} day${(state.bestStreak || 0) === 1 ? '' : 's'}.</p>
+          <p class="text-[11px] text-ink2 px-1 leading-relaxed">Cards to review each day to keep your streak, across as many short sets as you like. Best so far: ${state.bestStreak || 0} day${(state.bestStreak || 0) === 1 ? '' : 's'}.</p>
           <div class="grid grid-cols-3 gap-2">
             ${GOAL_CHOICES.map(g => {
               const on = (state.dailyGoal || 10) === g;
@@ -5080,6 +5225,26 @@ function openSettingsSheet() {
                 class="p-3 rounded-xl flex flex-col items-center gap-0.5 ${on ? 'bg-accent-50 border border-accent-500' : 'bg-surface border border-line'}">
                 <span class="text-base font-display font-bold ${on ? 'text-ink' : 'text-ink2'}">${g}</span>
                 <span class="text-[9.5px] text-ink3">cards</span>
+              </button>`;
+            }).join('')}
+          </div>
+          <div class="flex items-center gap-2 pt-0.5">
+            <input id="custom-goal-input" type="number" inputmode="numeric" min="${GOAL_MIN}" max="${GOAL_MAX}"
+              value="${goalIsPreset ? '' : (state.dailyGoal || 10)}" placeholder="Custom amount"
+              class="flex-1 min-w-0 bg-bg border ${goalIsPreset ? 'border-line' : 'border-accent-500'} rounded-xl px-3 py-2.5 text-xs text-ink focus:border-accent-500 transition">
+            <button data-action="set-custom-goal" class="shrink-0 px-4 py-2.5 rounded-xl bg-surface2 border border-line text-[11px] font-bold text-ink">Set</button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Session length</h4>
+          <p class="text-[11px] text-ink2 px-1 leading-relaxed">Cards in one practice set. Keeping this short is what lets a big daily goal still fit into gaps  -  endless practice ignores it and runs until you stop.</p>
+          <div class="grid grid-cols-5 gap-1.5">
+            ${SESSION_SIZES.map(n => {
+              const on = sessionSize() === n;
+              return `<button data-action="set-session-size" data-size="${n}"
+                class="py-2.5 rounded-xl flex items-center justify-center ${on ? 'bg-accent-50 border border-accent-500' : 'bg-surface border border-line'}">
+                <span class="text-[13px] font-display font-bold ${on ? 'text-ink' : 'text-ink2'}">${n}</span>
               </button>`;
             }).join('')}
           </div>
@@ -5372,7 +5537,17 @@ document.addEventListener('click', e => {
 
   else if (a === 'open-exam') { state.studyExam = t.dataset.exam; saveState(); render(); }
   else if (a === 'back-to-exams') { state.studyExam = null; saveState(); render(); }
-  else if (a === 'set-daily-goal') { state.dailyGoal = Number(t.dataset.goal) || 10; saveState(); openSettingsSheet(); }
+  else if (a === 'set-daily-goal') { setDailyGoal(Number(t.dataset.goal)); }
+  else if (a === 'set-custom-goal') {
+    const raw = document.getElementById('custom-goal-input')?.value;
+    const n = Math.round(Number(raw));
+    if (!raw || !isFinite(n) || n < GOAL_MIN) { toast(`Enter a number from ${GOAL_MIN} to ${GOAL_MAX}`); return; }
+    setDailyGoal(n);
+  }
+  else if (a === 'set-session-size') {
+    state.sessionSize = Math.max(5, Math.min(50, Number(t.dataset.size) || 10));
+    saveState(); openSettingsSheet();
+  }
   else if (a === 'start-deck') {
     const deck = getDeck(t.dataset.deck);
     startSession(buildDeckQueue(deck),
@@ -5386,6 +5561,29 @@ document.addEventListener('click', e => {
     startSession(queue, { kind: 'mixed', examKey, label: `${examKey} mix` });
     render();
   }
+  else if (a === 'start-endless') {
+    const examKey = t.dataset.exam || state.studyExam;
+    const queue = buildMixedQueue(examKey, Math.max(5, sessionSize()));
+    if (!queue.length) { toast('No cards available yet'); return; }
+    startSession(queue, { kind: 'mixed', examKey, label: `${examKey} endless`, endless: true });
+    render();
+  }
+  // Turns a finished set into an endless one from the summary, so "one more" never
+  // means backing out and starting again.
+  else if (a === 'continue-endless') {
+    const meta = state.ui.studyMeta || {};
+    if (!currentQueue().length) { toast('No cards available yet'); return; }
+    state.ui.studyMeta = Object.assign({}, meta, {
+      endless: true,
+      label: meta.endless ? meta.label : `${meta.label || meta.examKey || 'Practice'} endless`,
+    });
+    state.ui.studyEnded = false;
+    if (state.ui.studyCardIndex >= currentQueue().length && !extendSession()) {
+      toast('No cards available yet'); return;
+    }
+    render();
+  }
+  else if (a === 'end-session') { state.ui.studyEnded = true; render(); }
   else if (a === 'retry-deck') {
     const deck = getDeck(t.dataset.deck);
     startSession(buildDeckQueue(deck),
@@ -5394,30 +5592,37 @@ document.addEventListener('click', e => {
   }
   else if (a === 'exit-deck') {
     state.ui.studyDeckId = null; state.ui.studyQueue = null; state.ui.studyMeta = null; state.ui.studyCardIndex = 0;
+    state.ui.studyResults = []; state.ui.studyEnded = false;
     render();
   }
   else if (a === 'study-select') {
-    const key = `study_${t.dataset.deck}_${t.dataset.card}`;
+    const key = t.dataset.key || `study_${t.dataset.deck}_${t.dataset.card}`;
+    // Once an answer is checked it stands. Letting a second tap re-open it meant a
+    // card could be answered twice, counting twice towards the day's goal.
+    if (state.ui.draftAnswers[key]?.checked) return;
     state.ui.draftAnswers[key] = { index: Number(t.dataset.idx), checked: false };
     render();
   }
   else if (a === 'study-check') {
     // Draft answers key on the instance; progress keys on the skill behind it.
-    const key = `study_${t.dataset.deck}_${t.dataset.card}`;
+    const key = t.dataset.key || `study_${t.dataset.deck}_${t.dataset.card}`;
     const skill = t.dataset.skill || t.dataset.card;
     const sel = state.ui.draftAnswers[key];
     if (!sel || sel.index === undefined) { toast('Pick an answer first'); return; }
+    if (sel.checked) return;
     sel.checked = true;
-    const card = queuedCard(t.dataset.deck, skill) || getDeck(t.dataset.deck)?.cards?.find(c => c.id === skill);
+    const card = queuedCard(t.dataset.deck, t.dataset.card, skill) || getDeck(t.dataset.deck)?.cards?.find(c => c.id === skill);
     haptic(sel.index === card?.correctIndex ? 14 : [10, 40, 10]);
-    completeStudyCard(t.dataset.deck, skill, sel.index);
+    completeStudyCard(t.dataset.deck, skill, sel.index, t.dataset.card);
     render();
   }
   else if (a === 'study-session-next') { state.ui.studyCardIndex++; render(); }
   else if (a === 'study-free-done') {
-    const key = `study_${t.dataset.deck}_${t.dataset.card}`;
-    const text = state.ui.draftAnswers[key]?.text || '';
-    completeFreeStudyCard(t.dataset.deck, t.dataset.skill || t.dataset.card, text);
+    const key = t.dataset.key || `study_${t.dataset.deck}_${t.dataset.card}`;
+    const draft = state.ui.draftAnswers[key] || (state.ui.draftAnswers[key] = {});
+    if (draft.submitted) return;
+    draft.submitted = true;
+    completeFreeStudyCard(t.dataset.deck, t.dataset.skill || t.dataset.card, draft.text || '');
     render();
   }
 
