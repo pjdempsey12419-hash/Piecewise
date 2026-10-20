@@ -1,4 +1,6 @@
-const CACHE = 'piecewise-v6';
+// Bump this on every change to piecewise.html: the shell is served cache-first, so
+// installed copies keep showing the old build until the cache name changes.
+const CACHE = 'piecewise-v7';
 const SHELL = ['./', './piecewise.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', (event) => {

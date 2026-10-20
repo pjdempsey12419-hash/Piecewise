@@ -57,27 +57,31 @@
      colour, every inline style and the dark variant all read from it.
      ======================================================================== */
   :root {
-    /* Core palette */
-    --c-bg:        250 249 246;   /* #FAF9F6  page */
-    --c-surface:   255 255 255;   /* #FFFFFF  cards */
-    --c-surface2:  244 243 239;   /* #F4F3EF  insets, tracks */
-    --c-line:      226 225 220;   /* #E2E1DC  borders */
-    --c-linesoft:  237 236 231;   /* #EDECE7  hairline dividers */
+    /* Core palette  -  warm cream page, warm-white cards. Plain white cards on a
+       cream page keep their edge without a hard border doing the work. */
+    --c-bg:        242 234 220;   /* #F2EADC  page, cream */
+    --c-surface:   250 244 233;   /* #FAF4E9  cards  -  a lighter cream, never white */
+    /* Secondary surfaces and every edge carry the blue, so the cream reads as a
+       warm page with blue furniture on it rather than a neutral sheet. */
+    --c-surface2:  228 237 247;   /* #E4EDF7  insets, tracks */
+    --c-line:      198 215 232;   /* #C6D7E8  borders */
+    --c-linesoft:  219 231 243;   /* #DBE7F3  hairline dividers */
     /* The grey ramp is set as light as WCAG AA allows rather than by eye  -  the
        reference's airy #9A9A9A lands at ~2.7:1 on this background, which is a
        lot of this app's text (dates, counts, captions) sitting under the line. */
     --c-ink:        47  47  47;   /* #2F2F2F  primary text   ~13.1:1 */
     --c-ink2:       88  88  86;   /* #585856  secondary text  ~6.8:1 */
-    --c-ink3:      110 110 107;   /* #6E6E6B  tertiary text   ~4.8:1 */
+    --c-ink3:       98  98  95;   /* #62625F  tertiary text   ~5.0:1 on insets */
 
-    /* Primary  -  sage. Buttons and the progress ring. */
-    --c-accent-50:  239 245 242;
-    --c-accent-100: 214 229 222;
-    --c-accent-400: 185 210 199;
-    --c-accent-500: 167 196 184;  /* #A7C4B8 */
-    --c-accent-600: 134 168 153;
-    --c-accent-700: 103 136 122;
-    --c-accent-800:  79 110  97;  /* #4F6E61  text-safe sage */
+    /* Primary  -  baby blue. Buttons, progress and selected states. */
+    --c-accent-50:  234 242 250;
+    --c-accent-100: 213 230 245;
+    --c-accent-400: 187 215 239;
+    --c-accent-500: 168 203 232;  /* #A8CBE8 */
+    --c-accent-600: 139 181 219;
+    --c-accent-700: 107 153 196;
+    --c-accent-800:  63 106 150;  /* #3F6A96  text-safe blue */
+    --c-on-accent:   27  51  72;  /* #1B3348  labels sitting on the pastel fill */
 
     /* Secondary  -  sky. Progress bars and highlights. */
     --c-sky-100: 226 237 248;
@@ -95,15 +99,15 @@
     --c-lilac-100: 237 231 245;  --c-lilac-700:  95  81 128;
     --c-rose-100:  250 230 236;  --c-rose-700:  138  78 100;
 
-    --c-good: 127 169 143;  --c-good-ink:  79 122  95;
-    --c-bad:  208 140 127;  --c-bad-ink:  176  89  74;
+    --c-good: 127 169 143;  --c-good-ink:  72 112  86;  --c-good-tint: 231 241 234;
+    --c-bad:  208 140 127;  --c-bad-ink:  160  79  66;
     /* Destructive buttons need a fill solid enough to carry a label at AA. */
     --c-danger: 176 89 74;  --c-danger-on: 255 255 255;
 
     /* Elevation  -  low, wide and soft. Nothing in this app should look heavy. */
     --shadow-card: 0 1px 2px rgb(47 47 47 / 0.04), 0 10px 24px -16px rgb(47 47 47 / 0.16);
     --shadow-lift: 0 1px 2px rgb(47 47 47 / 0.06), 0 18px 36px -22px rgb(47 47 47 / 0.26);
-    --stage-grad: radial-gradient(120% 90% at 50% -10%, #F7F6F2 0%, #E9E8E3 70%);
+    --stage-grad: radial-gradient(120% 90% at 50% -10%, #F7F0E2 0%, #E6DAC6 70%);
 
     color-scheme: light;
   }
@@ -119,13 +123,14 @@
     --c-ink2:      175 174 169;
     --c-ink3:      150 148 143;
 
-    --c-accent-50:  33  44  39;
-    --c-accent-100: 44  58  52;
-    --c-accent-400: 167 196 184;
-    --c-accent-500: 167 196 184;
-    --c-accent-600: 185 210 199;
-    --c-accent-700: 185 210 199;
-    --c-accent-800: 185 210 199;
+    --c-accent-50:  26  38  50;
+    --c-accent-100: 36  54  72;
+    --c-accent-400: 168 203 232;
+    --c-accent-500: 168 203 232;
+    --c-accent-600: 187 215 239;
+    --c-accent-700: 187 215 239;
+    --c-accent-800: 187 215 239;
+    --c-on-accent:  27  51  72;
 
     --c-sky-100:  34  48  61;
     --c-sky-500: 175 200 232;
@@ -140,7 +145,7 @@
     --c-lilac-100: 45  40  56;  --c-lilac-700: 198 184 223;
     --c-rose-100:  56  38  44;  --c-rose-700:  232 185 200;
 
-    --c-good: 143 191 159;  --c-good-ink: 143 191 159;
+    --c-good: 143 191 159;  --c-good-ink: 143 191 159;  --c-good-tint: 30 44 36;
     --c-bad:  224 156 143;  --c-bad-ink:  224 156 143;
     --c-danger: 224 156 143;  --c-danger-on: 42 20 16;
 
@@ -216,6 +221,12 @@
     background: rgb(var(--c-surface2)) !important;
     box-shadow: none;
   }
+  /* `bg-bg` does double duty: the page itself, and insets and form fields sitting
+     inside a card. Only the inset use carries a radius and a border, so route
+     those onto the blue secondary surface and leave the page alone. */
+  .app-viewport [class*="bg-bg"][class*="rounded-"][class*="border"]:not(.option-btn) {
+    background: rgb(var(--c-surface2)) !important;
+  }
   /* Borders sit a shade softer than the palette's divider grey so cards
      read as edges of paper, not boxes drawn on it. */
   .app-viewport [class*="border-line"] { border-color: rgb(var(--c-linesoft)) !important; }
@@ -231,6 +242,12 @@
 
   header.app-header { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   nav.app-nav { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Top and bottom chrome sit on the pale blue, which frames the cream content
+     and keeps the accent present on every screen rather than only where a
+     button happens to be. */
+  header.app-header .bg-bg,
+  nav.app-nav { background: rgb(var(--c-accent-50)) !important; }
 
   /* ------------------------------------------------------------------
      Type: calm and roomy. The reference has no uppercase tracking and no
@@ -260,12 +277,12 @@
   .frac .den { padding: 2px 2px 0; }
 
   /* ------------------------------------------------------------------
-     Buttons: soft sage pill. Text stays deep ink  -  white on #A7C4B8 is
-     ~1.9:1, so the pastel carries the fill and the ink carries the label.
+     Buttons: soft baby-blue pill. Text stays deep ink  -  white on #A8CBE8 is
+     ~1.7:1, so the pastel carries the fill and the ink carries the label.
      ------------------------------------------------------------------ */
   .app-viewport [class*="grad-btn"] { border-radius: 999px !important; }
   .grad-btn {
-    background: rgb(var(--c-accent-500)); color: #23312B; border-color: transparent !important;
+    background: rgb(var(--c-accent-500)); color: rgb(var(--c-on-accent)); border-color: transparent !important;
     font-weight: 600 !important; letter-spacing: -0.006em;
     box-shadow: 0 1px 2px rgb(47 47 47 / 0.08), 0 8px 18px -10px rgb(103 136 122 / 0.5);
     transition: transform .1s cubic-bezier(.2,.8,.2,1), background .15s ease, box-shadow .15s ease;
@@ -275,12 +292,15 @@
   .grad-text { color: rgb(var(--c-ink)); }
   .grad-ring { background: rgb(var(--c-accent-500)); }
 
-  .option-btn { transition: border-color .15s ease, background .15s ease, transform .1s ease; }
-  .option-btn:hover { border-color: rgb(var(--c-line)); }
+  /* Answer rows sit on the blue at rest, so picking one deepens a colour that is
+     already there instead of introducing one. */
+  .option-btn { background: rgb(var(--c-accent-50)) !important; transition: border-color .15s ease, background .15s ease, transform .1s ease; }
+  .option-btn .bubble { background: rgb(var(--c-surface)); border-color: rgb(var(--c-accent-400)) !important; }
+  .option-btn:hover { border-color: rgb(var(--c-accent-500)); }
   .option-btn:active { transform: scale(.99); }
-  .option-btn.selected { background: rgb(var(--c-accent-50)) !important; border-color: rgb(var(--c-accent-500)) !important; }
-  .option-btn.selected .bubble { background: rgb(var(--c-accent-500)) !important; color:#23312B !important; border-color: rgb(var(--c-accent-500)) !important; }
-  .option-btn.correct { background: rgb(var(--c-accent-50)) !important; border-color: rgb(var(--c-good)) !important; }
+  .option-btn.selected { background: rgb(var(--c-accent-100)) !important; border-color: rgb(var(--c-accent-500)) !important; }
+  .option-btn.selected .bubble { background: rgb(var(--c-accent-500)) !important; color:rgb(var(--c-on-accent)) !important; border-color: rgb(var(--c-accent-500)) !important; }
+  .option-btn.correct { background: rgb(var(--c-good-tint)) !important; border-color: rgb(var(--c-good)) !important; }
   .option-btn.correct .bubble { background: rgb(var(--c-good)) !important; color:#1F2E24 !important; border-color: rgb(var(--c-good)) !important; }
   .option-btn.wrong { background: rgb(var(--c-bad) / 0.12) !important; border-color: rgb(var(--c-bad)) !important; animation: shake .32s; }
   .option-btn.wrong .bubble { background: rgb(var(--c-bad)) !important; color:#3A1C16 !important; border-color: rgb(var(--c-bad)) !important; }
@@ -292,14 +312,14 @@
   .pop { animation: popIn .2s cubic-bezier(.16,1,.3,1); }
 
   /* ------------------------------------------------------------------
-     Progress: sage for the ring, sky for the bars  -  as in the reference.
+     Progress: baby blue while in flight, sage once a thing is finished.
      ------------------------------------------------------------------ */
   .ring-chart { transform: rotate(-90deg); }
   .ring-chart circle { transition: stroke-dashoffset .5s ease; }
 
   .app-viewport .rounded-full.overflow-hidden { background: rgb(var(--c-surface2)) !important; }
-  .app-viewport .h-full.bg-accent-500 { background: rgb(var(--c-sky-500)) !important; border-radius: 999px; }
-  .app-viewport .h-full.bg-good { background: rgb(var(--c-accent-500)) !important; border-radius: 999px; }
+  .app-viewport .h-full.bg-accent-500 { background: rgb(var(--c-accent-500)) !important; border-radius: 999px; }
+  .app-viewport .h-full.bg-good { background: rgb(var(--c-good)) !important; border-radius: 999px; }
 
   progress-track { display:block; }
 
@@ -324,8 +344,8 @@
     width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700; shrink: 0; position: relative; z-index: 1; background: rgb(var(--c-bg));
   }
-  .stepper-node.done { background: rgb(var(--c-accent-500)); color: #23312B; }
-  .stepper-node.current { background: transparent; color: #23312B; }
+  .stepper-node.done { background: rgb(var(--c-accent-500)); color: rgb(var(--c-on-accent)); }
+  .stepper-node.current { background: transparent; color: rgb(var(--c-on-accent)); }
   .stepper-node.current .ring2 { position:absolute; inset:0; border-radius:999px; background: rgb(var(--c-accent-500)); }
   .stepper-node.upcoming { border: 1.5px solid rgb(var(--c-line)); color: rgb(var(--c-ink3)); }
 
@@ -532,8 +552,8 @@ function daysUntil(iso) {
 
 function burstConfetti() {
   return; // celebratory confetti removed for a calmer, professional feel
-  // Confetti stays inside the pastel palette  -  sage, sky, peach, lilac, rose.
-  const colors = ['#A7C4B8', '#AFC8E8', '#F6D7C1', '#C9BBE0', '#F2C2D0'];
+  // Confetti stays inside the pastel palette  -  baby blue, sage, peach, lilac, rose.
+  const colors = ['#A8CBE8', '#A7C4B8', '#F6D7C1', '#C9BBE0', '#F2C2D0'];
   for (let i = 0; i < 26; i++) {
     const p = document.createElement('div');
     p.className = 'confetti-piece';
@@ -935,7 +955,8 @@ let state = {
   studyProgress: {},
   streakDays: 0,
   lastActiveDate: null,
-  theme: 'system',   // 'light' | 'dark' | 'system'  -  persisted with the rest of state
+  theme: 'light',    // 'light' | 'dark' | 'system'  -  persisted with the rest of state
+  themeChosen: false,// true once the user picks a mode in Settings themselves
   ui: { tab: 'feed', workView: 'list', workAssignmentId: null, workPlayer: null,
         studyExam: null, studyDeckId: null, studyCardIndex: 0, studySession: null,
         draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false,
@@ -954,6 +975,10 @@ function loadState() {
     state.assignments = [JSON.parse(JSON.stringify(CALC_SAMPLE))];
   }
   if (!state.studyProgress) state.studyProgress = {};
+  // Appearance briefly defaulted to System, which dropped anyone on a dark device
+  // into dark mode. Light is the intended default, so move saves that never had a
+  // deliberate choice across to it; anything the user picked themselves stands.
+  if (!state.themeChosen) state.theme = 'light';
 }
 function saveState() {
   try {
@@ -2521,6 +2546,7 @@ function applyTheme() {
 }
 function setTheme(mode) {
   state.theme = mode;
+  state.themeChosen = true;
   applyTheme();
   saveState();
   openSettingsSheet();
