@@ -18,20 +18,26 @@
     darkMode: 'class',
     theme: {
       extend: {
+        // Every colour resolves through a CSS variable holding RGB channels, so
+        // the palette lives in exactly one place and dark mode is a re-declare.
         colors: {
-          bg: '#FAF9F6',
-          surface: '#FFFFFF',
-          surface2: '#F3F2EE',
-          line: '#D9D9D9',
-          linesoft: '#E8E7E3',
-          ink: '#2F2F2F',
-          ink2: '#6E6E6E',
-          ink3: '#9A9A9A',
-          accent: { 50:'#EFF5F2', 100:'#D6E5DE', 400:'#B9D2C7', 500:'#A7C4B8', 600:'#86A899', 700:'#67887A' },
-          sky: { 100:'#E2EDF8', 500:'#AFC8E8', 600:'#8FB0D8' },
-          peach: { 100:'#FDEEE3', 500:'#F6D7C1', 600:'#E8B894' },
-          good: '#7FA98F',
-          bad: '#D08C7F',
+          bg:       'rgb(var(--c-bg) / <alpha-value>)',
+          surface:  'rgb(var(--c-surface) / <alpha-value>)',
+          surface2: 'rgb(var(--c-surface2) / <alpha-value>)',
+          line:     'rgb(var(--c-line) / <alpha-value>)',
+          linesoft: 'rgb(var(--c-linesoft) / <alpha-value>)',
+          ink:      'rgb(var(--c-ink) / <alpha-value>)',
+          ink2:     'rgb(var(--c-ink2) / <alpha-value>)',
+          ink3:     'rgb(var(--c-ink3) / <alpha-value>)',
+          accent: {
+             50:'rgb(var(--c-accent-50) / <alpha-value>)',  100:'rgb(var(--c-accent-100) / <alpha-value>)',
+            400:'rgb(var(--c-accent-400) / <alpha-value>)', 500:'rgb(var(--c-accent-500) / <alpha-value>)',
+            600:'rgb(var(--c-accent-600) / <alpha-value>)', 700:'rgb(var(--c-accent-700) / <alpha-value>)',
+          },
+          sky:   { 100:'rgb(var(--c-sky-100) / <alpha-value>)',   500:'rgb(var(--c-sky-500) / <alpha-value>)',   600:'rgb(var(--c-sky-600) / <alpha-value>)' },
+          peach: { 100:'rgb(var(--c-peach-100) / <alpha-value>)', 500:'rgb(var(--c-peach-500) / <alpha-value>)', 600:'rgb(var(--c-peach-600) / <alpha-value>)' },
+          good: 'rgb(var(--c-good) / <alpha-value>)',
+          bad:  'rgb(var(--c-bad) / <alpha-value>)',
         },
         fontFamily: {
           display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -45,12 +51,111 @@
 </script>
 
 <style>
-  :root { color-scheme: light; }
+  /* ========================================================================
+     PIECEWISE THEME  -  "Clean. Calm. Focused."
+     One pastel palette, declared once as RGB channels so every Tailwind
+     colour, every inline style and the dark variant all read from it.
+     ======================================================================== */
+  :root {
+    /* Core palette */
+    --c-bg:        250 249 246;   /* #FAF9F6  page */
+    --c-surface:   255 255 255;   /* #FFFFFF  cards */
+    --c-surface2:  244 243 239;   /* #F4F3EF  insets, tracks */
+    --c-line:      226 225 220;   /* #E2E1DC  borders */
+    --c-linesoft:  237 236 231;   /* #EDECE7  hairline dividers */
+    /* The grey ramp is set as light as WCAG AA allows rather than by eye  -  the
+       reference's airy #9A9A9A lands at ~2.7:1 on this background, which is a
+       lot of this app's text (dates, counts, captions) sitting under the line. */
+    --c-ink:        47  47  47;   /* #2F2F2F  primary text   ~13.1:1 */
+    --c-ink2:       88  88  86;   /* #585856  secondary text  ~6.8:1 */
+    --c-ink3:      110 110 107;   /* #6E6E6B  tertiary text   ~4.8:1 */
+
+    /* Primary  -  sage. Buttons and the progress ring. */
+    --c-accent-50:  239 245 242;
+    --c-accent-100: 214 229 222;
+    --c-accent-400: 185 210 199;
+    --c-accent-500: 167 196 184;  /* #A7C4B8 */
+    --c-accent-600: 134 168 153;
+    --c-accent-700: 103 136 122;
+    --c-accent-800:  79 110  97;  /* #4F6E61  text-safe sage */
+
+    /* Secondary  -  sky. Progress bars and highlights. */
+    --c-sky-100: 226 237 248;
+    --c-sky-500: 175 200 232;     /* #AFC8E8 */
+    --c-sky-600: 143 176 216;
+    --c-sky-700:  74 107 143;     /* #4A6B8F  text-safe sky */
+
+    /* Accent  -  peach. Tags and highlights. */
+    --c-peach-100: 253 238 227;
+    --c-peach-500: 246 215 193;   /* #F6D7C1 */
+    --c-peach-600: 232 184 148;
+    --c-peach-700: 135  96  60;   /* #87603C  text-safe peach */
+
+    /* Subject tints  -  the 700s are the text-safe shade of each 100 */
+    --c-lilac-100: 237 231 245;  --c-lilac-700:  95  81 128;
+    --c-rose-100:  250 230 236;  --c-rose-700:  138  78 100;
+
+    --c-good: 127 169 143;  --c-good-ink:  79 122  95;
+    --c-bad:  208 140 127;  --c-bad-ink:  176  89  74;
+    /* Destructive buttons need a fill solid enough to carry a label at AA. */
+    --c-danger: 176 89 74;  --c-danger-on: 255 255 255;
+
+    /* Elevation  -  low, wide and soft. Nothing in this app should look heavy. */
+    --shadow-card: 0 1px 2px rgb(47 47 47 / 0.04), 0 10px 24px -16px rgb(47 47 47 / 0.16);
+    --shadow-lift: 0 1px 2px rgb(47 47 47 / 0.06), 0 18px 36px -22px rgb(47 47 47 / 0.26);
+    --stage-grad: radial-gradient(120% 90% at 50% -10%, #F7F6F2 0%, #E9E8E3 70%);
+
+    color-scheme: light;
+  }
+
+  /* Dark mode  -  the same pastels, floated on near-black instead of paper. */
+  :root[data-theme="dark"] {
+    --c-bg:         26  26  28;
+    --c-surface:    36  36  38;
+    --c-surface2:   45  45  48;
+    --c-line:       56  56  60;
+    --c-linesoft:   44  44  47;
+    --c-ink:       242 241 236;
+    --c-ink2:      175 174 169;
+    --c-ink3:      150 148 143;
+
+    --c-accent-50:  33  44  39;
+    --c-accent-100: 44  58  52;
+    --c-accent-400: 167 196 184;
+    --c-accent-500: 167 196 184;
+    --c-accent-600: 185 210 199;
+    --c-accent-700: 185 210 199;
+    --c-accent-800: 185 210 199;
+
+    --c-sky-100:  34  48  61;
+    --c-sky-500: 175 200 232;
+    --c-sky-600: 196 216 240;
+    --c-sky-700: 175 200 232;
+
+    --c-peach-100: 58  47  38;
+    --c-peach-500: 246 215 193;
+    --c-peach-600: 246 215 193;
+    --c-peach-700: 246 215 193;
+
+    --c-lilac-100: 45  40  56;  --c-lilac-700: 198 184 223;
+    --c-rose-100:  56  38  44;  --c-rose-700:  232 185 200;
+
+    --c-good: 143 191 159;  --c-good-ink: 143 191 159;
+    --c-bad:  224 156 143;  --c-bad-ink:  224 156 143;
+    --c-danger: 224 156 143;  --c-danger-on: 42 20 16;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 24px -16px rgb(0 0 0 / 0.6);
+    --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.35), 0 18px 36px -22px rgb(0 0 0 / 0.75);
+    --stage-grad: radial-gradient(120% 90% at 50% -10%, #212123 0%, #141416 70%);
+
+    color-scheme: dark;
+  }
+
   html, body { height: 100%; }
   body {
     margin: 0;
-    background: #EFEEEA;
-    color: #2F2F2F;
+    background: rgb(var(--c-bg));
+    color: rgb(var(--c-ink));
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.006em;
     -webkit-font-smoothing: antialiased;
@@ -65,7 +170,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(120% 90% at 50% -10%, #F6F5F1 0%, #E7E6E1 70%);
+    background: var(--stage-grad);
     padding: 0;
   }
   .app-viewport {
@@ -78,43 +183,75 @@
     overflow: hidden;
     border: 0;
     isolation: isolate;
-    background: #FAF9F6;
+    background: rgb(var(--c-bg));
   }
   @media (min-width: 640px) {
     .stage { padding: 24px; }
     .app-viewport {
       height: min(94dvh, 900px);
-      border-radius: 28px;
-      border: 1px solid #E3E2DE;
-      box-shadow: 0 24px 60px -30px rgba(47,47,47,0.28);
+      border-radius: 32px;
+      border: 1px solid rgb(var(--c-line));
+      box-shadow: var(--shadow-lift);
     }
   }
 
-  /* One generous, consistent radius scale app-wide, without touching every element. */
-  .app-viewport [class*="rounded-2xl"]:not([class*="grad-btn"]) { border-radius: 20px !important; }
-  .app-viewport [class*="rounded-xl"]:not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 16px !important; }
-  .app-viewport [class*="rounded-lg"]:not([class*="rounded-xl"]):not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 12px !important; }
+  /* ------------------------------------------------------------------
+     Shape: one generous radius scale, applied app-wide without having to
+     touch every element's classes.
+     ------------------------------------------------------------------ */
+  .app-viewport [class*="rounded-2xl"]:not([class*="grad-btn"]) { border-radius: 22px !important; }
+  .app-viewport [class*="rounded-xl"]:not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 18px !important; }
+  .app-viewport [class*="rounded-lg"]:not([class*="rounded-xl"]):not([class*="rounded-2xl"]):not([class*="grad-btn"]) { border-radius: 14px !important; }
   .app-viewport [class*="rounded-md"]:not([class*="grad-btn"]) { border-radius: 10px !important; }
 
-  /* Soft paper cards: white on warm off-white, hairline border, gentle lift. */
+  /* ------------------------------------------------------------------
+     Surfaces: white cards floating on warm off-white, hairline border,
+     a shadow you feel rather than see.
+     ------------------------------------------------------------------ */
+  .app-viewport [class*="bg-surface"]:not([class*="bg-surface2"]) {
+    background: rgb(var(--c-surface)) !important;
+    box-shadow: var(--shadow-card);
+  }
   .app-viewport [class*="bg-surface2"] {
-    background: #ECEBE6 !important;
+    background: rgb(var(--c-surface2)) !important;
     box-shadow: none;
   }
+  /* Borders sit a shade softer than the palette's divider grey so cards
+     read as edges of paper, not boxes drawn on it. */
+  .app-viewport [class*="border-line"] { border-color: rgb(var(--c-linesoft)) !important; }
+  .app-viewport .bg-line, .app-viewport .h-px.bg-line { background: rgb(var(--c-linesoft)) !important; }
 
-  /* The pastel accents are fills, not text colours  -  sage on white is only ~1.9:1.
-     Anywhere they're used as TEXT, swap in a deeper shade of the same hue so it
-     actually clears WCAG AA. Backgrounds and borders keep the soft pastel. */
-  .app-viewport [class*="text-accent-"] { color: #5E8273 !important; }
-  .app-viewport [class*="text-good"] { color: #4F7A5F !important; }
-  .app-viewport [class*="text-bad"] { color: #B0594A !important; }
-  .app-viewport [class*="bg-surface"]:not([class*="bg-surface2"]) {
-    background: #FFFFFF !important;
-    box-shadow: 0 1px 2px rgba(47,47,47,0.04), 0 8px 20px -14px rgba(47,47,47,0.14);
-  }
+  /* Pastels are fills, not text colours  -  sage on white is only ~1.9:1.
+     Where they carry text, swap in the deeper shade of the same hue so it
+     clears WCAG AA; fills and borders keep the soft pastel. */
+  .app-viewport [class*="text-accent-"] { color: rgb(var(--c-accent-800)) !important; }
+  .app-viewport [class*="text-good"] { color: rgb(var(--c-good-ink)) !important; }
+  .app-viewport [class*="text-bad"] { color: rgb(var(--c-bad-ink)) !important; }
+  .app-viewport .bg-bad.text-white { background: rgb(var(--c-danger)) !important; color: rgb(var(--c-danger-on)) !important; }
 
   header.app-header { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
   nav.app-nav { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+  /* ------------------------------------------------------------------
+     Type: calm and roomy. The reference has no uppercase tracking and no
+     monospace  -  eyebrow labels are simply small, sentence-case greys.
+     ------------------------------------------------------------------ */
+  .app-viewport .uppercase {
+    text-transform: none !important;
+    letter-spacing: -0.004em !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+  }
+  .app-viewport .font-mono {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  /* Screen titles read lighter and larger than stock Tailwind bold. */
+  .app-viewport h2[class*="text-[22px]"] { font-size: 25px !important; font-weight: 600 !important; letter-spacing: -0.028em; }
+  .app-viewport h2[class*="text-[17px]"] { font-size: 18px !important; font-weight: 600 !important; letter-spacing: -0.022em; }
+  header.app-header h1 { font-size: 20px !important; font-weight: 600 !important; letter-spacing: -0.026em; }
+  header.app-header h1 + p { font-size: 11px !important; color: rgb(var(--c-ink3)); }
 
   .math { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style: italic; letter-spacing: 0.01em; }
   .math sup, .math sub { font-style: italic; }
@@ -122,27 +259,31 @@
   .frac .num { padding: 0 2px 2px; border-bottom: 1.3px solid currentColor; }
   .frac .den { padding: 2px 2px 0; }
 
+  /* ------------------------------------------------------------------
+     Buttons: soft sage pill. Text stays deep ink  -  white on #A7C4B8 is
+     ~1.9:1, so the pastel carries the fill and the ink carries the label.
+     ------------------------------------------------------------------ */
   .app-viewport [class*="grad-btn"] { border-radius: 999px !important; }
   .grad-btn {
-    background: #A7C4B8; color: #23312B; border-color: transparent !important;
+    background: rgb(var(--c-accent-500)); color: #23312B; border-color: transparent !important;
     font-weight: 600 !important; letter-spacing: -0.006em;
-    box-shadow: 0 1px 2px rgba(47,47,47,0.10), 0 6px 14px -8px rgba(103,136,122,0.55);
+    box-shadow: 0 1px 2px rgb(47 47 47 / 0.08), 0 8px 18px -10px rgb(103 136 122 / 0.5);
     transition: transform .1s cubic-bezier(.2,.8,.2,1), background .15s ease, box-shadow .15s ease;
   }
-  .grad-btn:hover { background: #B9D2C7; }
-  .grad-btn:active { transform: scale(.97); background: #86A899; box-shadow: inset 0 1px 2px rgba(47,47,47,0.18); }
-  .grad-text { color: #2F2F2F; }
-  .grad-ring { background: #A7C4B8; }
+  .grad-btn:hover { background: rgb(var(--c-accent-400)); }
+  .grad-btn:active { transform: scale(.97); background: rgb(var(--c-accent-600)); box-shadow: inset 0 1px 2px rgb(47 47 47 / 0.18); }
+  .grad-text { color: rgb(var(--c-ink)); }
+  .grad-ring { background: rgb(var(--c-accent-500)); }
 
   .option-btn { transition: border-color .15s ease, background .15s ease, transform .1s ease; }
-  .option-btn:hover { border-color: #C2C1BD; }
+  .option-btn:hover { border-color: rgb(var(--c-line)); }
   .option-btn:active { transform: scale(.99); }
-  .option-btn.selected { background: #EFF5F2 !important; border-color: #A7C4B8 !important; }
-  .option-btn.selected .bubble { background:#A7C4B8 !important; color:#23312B !important; border-color:#A7C4B8 !important; }
-  .option-btn.correct { background: #EAF2EC !important; border-color: #7FA98F !important; }
-  .option-btn.correct .bubble { background:#7FA98F !important; color:#FFFFFF !important; border-color:#7FA98F !important; }
-  .option-btn.wrong { background: #FBEDEA !important; border-color: #D08C7F !important; animation: shake .32s; }
-  .option-btn.wrong .bubble { background:#D08C7F !important; color:#FFFFFF !important; border-color:#D08C7F !important; }
+  .option-btn.selected { background: rgb(var(--c-accent-50)) !important; border-color: rgb(var(--c-accent-500)) !important; }
+  .option-btn.selected .bubble { background: rgb(var(--c-accent-500)) !important; color:#23312B !important; border-color: rgb(var(--c-accent-500)) !important; }
+  .option-btn.correct { background: rgb(var(--c-accent-50)) !important; border-color: rgb(var(--c-good)) !important; }
+  .option-btn.correct .bubble { background: rgb(var(--c-good)) !important; color:#1F2E24 !important; border-color: rgb(var(--c-good)) !important; }
+  .option-btn.wrong { background: rgb(var(--c-bad) / 0.12) !important; border-color: rgb(var(--c-bad)) !important; animation: shake .32s; }
+  .option-btn.wrong .bubble { background: rgb(var(--c-bad)) !important; color:#3A1C16 !important; border-color: rgb(var(--c-bad)) !important; }
   @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
 
   @keyframes fadeUp { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: translateY(0); } }
@@ -150,44 +291,43 @@
   @keyframes popIn { from { opacity:0; transform: scale(.98); } to { opacity:1; transform: scale(1); } }
   .pop { animation: popIn .2s cubic-bezier(.16,1,.3,1); }
 
+  /* ------------------------------------------------------------------
+     Progress: sage for the ring, sky for the bars  -  as in the reference.
+     ------------------------------------------------------------------ */
   .ring-chart { transform: rotate(-90deg); }
   .ring-chart circle { transition: stroke-dashoffset .5s ease; }
+
+  .app-viewport .rounded-full.overflow-hidden { background: rgb(var(--c-surface2)) !important; }
+  .app-viewport .h-full.bg-accent-500 { background: rgb(var(--c-sky-500)) !important; border-radius: 999px; }
+  .app-viewport .h-full.bg-good { background: rgb(var(--c-accent-500)) !important; border-radius: 999px; }
 
   progress-track { display:block; }
 
   .nav-btn { position: relative; transition: color .15s ease; }
   .nav-btn::after {
     content: ''; position: absolute; top: -2px; left: 50%; width: 4px; height: 4px; border-radius: 999px;
-    background: #A7C4B8; opacity: 0; transform: translate(-50%, 2px) scale(.5);
+    background: rgb(var(--c-accent-500)); opacity: 0; transform: translate(-50%, 2px) scale(.5);
     transition: opacity .15s ease, transform .15s ease;
   }
   .nav-btn.text-ink::after { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
-  /* Small flourish rule under section headings */
+  /* Section headings are plain in the reference  -  no rule, no diamond. */
   .section-rule { display: flex; align-items: center; gap: 8px; }
-  .section-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, #DEDDD9, transparent); }
-  .section-rule .diamond { width: 4px; height: 4px; background: #A7C4B8; transform: rotate(45deg); flex-shrink: 0; }
 
-  /* Fine corner brackets for the hero/ornate cards */
-  .ornate-card { position: relative; }
-  .ornate-card::before, .ornate-card::after,
-  .ornate-card .bracket-br, .ornate-card .bracket-bl { content: ''; position: absolute; width: 9px; height: 9px; border-color: #C9D9D1; pointer-events: none; }
-  .ornate-card::before { top: 5px; left: 5px; border-top: 1.5px solid; border-left: 1.5px solid; }
-  .ornate-card::after { top: 5px; right: 5px; border-top: 1.5px solid; border-right: 1.5px solid; }
-  .ornate-card .bracket-bl { bottom: 5px; left: 5px; border-bottom: 1.5px solid; border-left: 1.5px solid; }
-  .ornate-card .bracket-br { bottom: 5px; right: 5px; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+  /* Pastel subject tiles: soft square, generous radius, no border. */
+  .subject-chip { border-radius: 14px; }
 
   /* Vertical numbered step tracker (assignment problem list) */
   .stepper { position: relative; }
-  .stepper-line { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 1px; background: #E2E1DD; }
+  .stepper-line { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 1px; background: rgb(var(--c-linesoft)); }
   .stepper-node {
     width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; shrink: 0; position: relative; z-index: 1; background: #FAF9F6;
+    font-size: 12px; font-weight: 700; shrink: 0; position: relative; z-index: 1; background: rgb(var(--c-bg));
   }
-  .stepper-node.done { background: #A7C4B8; color: #23312B; }
+  .stepper-node.done { background: rgb(var(--c-accent-500)); color: #23312B; }
   .stepper-node.current { background: transparent; color: #23312B; }
-  .stepper-node.current .ring2 { position:absolute; inset:0; border-radius:999px; background:#A7C4B8; }
-  .stepper-node.upcoming { border: 1.5px solid #D9D9D9; color: #9A9A9A; }
+  .stepper-node.current .ring2 { position:absolute; inset:0; border-radius:999px; background: rgb(var(--c-accent-500)); }
+  .stepper-node.upcoming { border: 1.5px solid rgb(var(--c-line)); color: rgb(var(--c-ink3)); }
 
   @keyframes confettiPop {
     0% { transform: translate(0,0) rotate(0deg); opacity:1; }
@@ -195,9 +335,10 @@
   }
   .confetti-piece { position: fixed; width:6px; height:11px; border-radius:1px; pointer-events:none; z-index:300; animation: confettiPop .9s ease-out forwards; }
 
-  input[type="date"] { color-scheme: light; }
+  input[type="date"] { color-scheme: inherit; }
   textarea:focus, input:focus { outline: none; }
-  ::placeholder { color: #A9A8A4; }
+  ::placeholder { color: rgb(var(--c-ink3)); }
+  select, input, textarea { color: rgb(var(--c-ink)); }
 </style>
 
 <div class="stage">
@@ -206,13 +347,13 @@
     <header class="app-header shrink-0 z-20">
       <div class="px-5 pb-3 bg-bg flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-lg bg-surface2 flex items-center justify-center shrink-0" style="border:1px solid #E2E1DD">
-            <svg viewBox="0 0 64 64" class="w-7 h-7" aria-hidden="true" fill="none" stroke="#2F2F2F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#A7C4B8" stroke="#A7C4B8"/>
+          <div class="w-9 h-9 rounded-lg bg-surface2 flex items-center justify-center shrink-0" style="border:1px solid rgb(var(--c-linesoft))">
+            <svg viewBox="0 0 64 64" class="w-7 h-7" aria-hidden="true" fill="none" stroke="rgb(var(--c-ink))" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="rgb(var(--c-accent-500))" stroke="rgb(var(--c-accent-500))"/>
               <circle cx="32" cy="36" r="18"/>
               <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
-              <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#2F2F2F"/>
-              <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#2F2F2F"/>
+              <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="rgb(var(--c-ink))"/>
+              <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="rgb(var(--c-ink))"/>
               <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
               <path d="M30 38.5h3.5"/>
               <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
@@ -227,13 +368,13 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface2" style="border:1px solid #E2E1DD" title="Day streak">
-            <span class="w-5 h-5 rounded-full bg-surface flex items-center justify-center" style="border:1px solid #E2E1DD">
-              <svg class="w-2.5 h-2.5" style="color:#E8B894" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
+          <div class="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-surface2" style="border:1px solid rgb(var(--c-linesoft))" title="Day streak">
+            <span class="w-5 h-5 rounded-full bg-surface flex items-center justify-center" style="border:1px solid rgb(var(--c-linesoft))">
+              <svg class="w-2.5 h-2.5" style="color:rgb(var(--c-peach-600))" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-3 2 1 3 3 3 5a5 5 0 0 1-10 0c0-5 3-6 5-10z"/></svg>
             </span>
             <span id="streak-counter" class="text-xs font-semibold text-ink font-mono">0</span>
           </div>
-          <button data-action="open-settings" class="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center text-ink2 shrink-0" style="border:1px solid #E2E1DD" title="Settings" aria-label="Settings">
+          <button data-action="open-settings" class="w-7 h-7 rounded-full bg-surface2 flex items-center justify-center text-ink2 shrink-0" style="border:1px solid rgb(var(--c-linesoft))" title="Settings" aria-label="Settings">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
         </div>
@@ -292,6 +433,8 @@ const ICONS = {
   edit: '<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
   sparkle: '<path d="M12 3 3 7.5l9 4.5 9-4.5L12 3z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5 12 21l9-4.5"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
   flag: '<path d="M5 21V4"/><path d="M5 5h13l-3 4 3 4H5"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
@@ -303,6 +446,8 @@ const ICONS = {
   shuffle: '<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>',
   trash: '<path d="M4 7h16"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
   wand: '<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 6.2l1.4-1.4M17.8 11.8l1.4 1.4M12.2 6.2l-1.4-1.4"/><path d="M5 21l11-11"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16 16"/>',
+  filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
 };
 function icon(name, cls) {
   return `<svg class="${cls || 'w-4 h-4'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
@@ -316,32 +461,32 @@ function subjectIcon(subject) {
 // Soft pastel tints, one per subject. `tint` is the card/chip fill, `ink` the icon and
 // label colour on top of it  -  a deeper shade of the same hue so it stays readable.
 const SUBJECT_COLORS = {
-  Math:     { tint: '#E2EDF8', ink: '#5B7FA6' },
-  Calculus: { tint: '#E2EDF8', ink: '#5B7FA6' },
-  Science:  { tint: '#E4EFE9', ink: '#5E8A72' },
-  English:  { tint: '#EDE7F5', ink: '#7B6A9B' },
-  History:  { tint: '#FDEEE3', ink: '#B5825A' },
-  Language: { tint: '#FAE6EC', ink: '#A96B82' },
+  Math:     { tint: 'rgb(var(--c-sky-100))',   ink: 'rgb(var(--c-sky-700))' },
+  Calculus: { tint: 'rgb(var(--c-sky-100))',   ink: 'rgb(var(--c-sky-700))' },
+  Science:  { tint: 'rgb(var(--c-accent-50))', ink: 'rgb(var(--c-accent-800))' },
+  English:  { tint: 'rgb(var(--c-lilac-100))', ink: 'rgb(var(--c-lilac-700))' },
+  History:  { tint: 'rgb(var(--c-peach-100))', ink: 'rgb(var(--c-peach-700))' },
+  Language: { tint: 'rgb(var(--c-rose-100))',  ink: 'rgb(var(--c-rose-700))' },
 };
-const SUBJECT_FALLBACK = { tint: '#F0EFEB', ink: '#7A7A76' };
+const SUBJECT_FALLBACK = { tint: 'rgb(var(--c-surface2))', ink: 'rgb(var(--c-ink2))' };
 function subjectPalette(subject) { return SUBJECT_COLORS[subject] || SUBJECT_FALLBACK; }
 function subjectColor(subject) { return subjectPalette(subject).ink; }
 function subjectChipHTML(subject, size) {
   const { tint, ink } = subjectPalette(subject);
-  const dim = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-9 h-9' : 'w-8 h-8';
-  const iconCls = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  return `<div class="${dim} rounded-lg flex items-center justify-center shrink-0" style="background:${tint};color:${ink}">${icon(subjectIcon(subject), iconCls)}</div>`;
+  const dim = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-10 h-10' : 'w-9 h-9';
+  const iconCls = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-5 h-5' : 'w-[18px] h-[18px]';
+  return `<div class="${dim} subject-chip rounded-lg flex items-center justify-center shrink-0" style="background:${tint};color:${ink}">${icon(subjectIcon(subject), iconCls)}</div>`;
 }
 
 // The Piecewise mascot: a pie-chart face in a top hat, glasses and monocle.
 // Reused at header size and blown up for empty/summary states.
 function mascotMarkHTML(cls) {
-  return `<svg viewBox="0 0 64 64" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="#2F2F2F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="#A7C4B8" stroke="#A7C4B8"/>
+  return `<svg viewBox="0 0 64 64" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="rgb(var(--c-ink))" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="rgb(var(--c-accent-500))" stroke="rgb(var(--c-accent-500))"/>
     <circle cx="32" cy="36" r="18"/>
     <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
-    <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="#2F2F2F"/>
-    <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="#2F2F2F"/>
+    <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="rgb(var(--c-ink))"/>
+    <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="rgb(var(--c-ink))"/>
     <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
     <path d="M30 38.5h3.5"/>
     <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
@@ -351,7 +496,7 @@ function mascotMarkHTML(cls) {
   </svg>`;
 }
 function mascotBadgeHTML(dim) {
-  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid #E2E1DD">${mascotMarkHTML('w-9 h-9')}</div>`;
+  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid rgb(var(--c-linesoft))">${mascotMarkHTML('w-9 h-9')}</div>`;
 }
 // Pocket-watch tick marks for the progress ring, drawn as short radial lines.
 function ringTicksHTML(cx, cy, rOuter, rInner, count) {
@@ -365,7 +510,7 @@ function ringTicksHTML(cx, cy, rOuter, rInner, count) {
   return out;
 }
 function sectionRuleHTML(title, subtitle) {
-  return `<div><div class="section-rule"><h2 class="text-[17px] font-display font-semibold text-ink tracking-tight shrink-0">${title}</h2><span class="diamond"></span></div>${subtitle ? `<p class="text-xs text-ink2 mt-0.5">${subtitle}</p>` : ''}</div>`;
+  return `<div><div class="section-rule"><h2 class="text-[17px] font-display font-semibold text-ink tracking-tight shrink-0">${title}</h2></div>${subtitle ? `<p class="text-xs text-ink2 mt-1">${subtitle}</p>` : ''}</div>`;
 }
 
 /* ============================== HELPERS ============================== */
@@ -387,7 +532,8 @@ function daysUntil(iso) {
 
 function burstConfetti() {
   return; // celebratory confetti removed for a calmer, professional feel
-  const colors = ['#8b5cf6', '#d946ef', '#f472b6', '#33d17a', '#f5f4f6'];
+  // Confetti stays inside the pastel palette  -  sage, sky, peach, lilac, rose.
+  const colors = ['#A7C4B8', '#AFC8E8', '#F6D7C1', '#C9BBE0', '#F2C2D0'];
   for (let i = 0; i < 26; i++) {
     const p = document.createElement('div');
     p.className = 'confetti-piece';
@@ -409,7 +555,7 @@ function burstConfetti() {
 function toast(msg) {
   const el = document.createElement('div');
   el.className = 'pop';
-  el.style.cssText = 'position:absolute;left:50%;bottom:86px;transform:translateX(-50%);background:#2F2F2F;color:#FAF9F6;font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;z-index:250;box-shadow:0 10px 26px -10px rgba(47,47,47,.5);white-space:nowrap;';
+  el.style.cssText = 'position:absolute;left:50%;bottom:86px;transform:translateX(-50%);background:rgb(var(--c-ink));color:rgb(var(--c-bg));font-family:Inter,sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;z-index:250;box-shadow:0 10px 26px -10px rgba(47,47,47,.5);white-space:nowrap;';
   el.textContent = msg;
   document.getElementById('app-viewport').appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 1500);
@@ -789,9 +935,11 @@ let state = {
   studyProgress: {},
   streakDays: 0,
   lastActiveDate: null,
+  theme: 'system',   // 'light' | 'dark' | 'system'  -  persisted with the rest of state
   ui: { tab: 'feed', workView: 'list', workAssignmentId: null, workPlayer: null,
         studyExam: null, studyDeckId: null, studyCardIndex: 0, studySession: null,
-        draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false }
+        draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false,
+        librarySearch: '', librarySubject: 'All', libraryHideDone: false }
 };
 
 function loadState() {
@@ -1252,11 +1400,11 @@ function renderFeedTab() {
         <p class="text-[11.5px] text-ink2 mt-1">${todayLabel} &middot; <span class="font-semibold text-ink">${dueCount} assignment${dueCount === 1 ? '' : 's'}</span> in progress</p>
       </div>
       ${selectorHtml}
-      <div class="p-4 rounded-xl flex items-center gap-3.5" style="background:#EFF5F2;border:1px solid #D6E5DE">
+      <div class="p-4 rounded-xl flex items-center gap-3.5" style="background:rgb(var(--c-accent-50));border:1px solid rgb(var(--c-accent-100))">
         <div class="relative w-16 h-16 shrink-0">
           <svg class="ring-chart w-16 h-16" viewBox="0 0 64 64">
-            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="#FFFFFF" stroke-width="6"/>
-            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="#86A899" stroke-width="6" stroke-linecap="round"
+            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="rgb(var(--c-surface))" stroke-width="6"/>
+            <circle cx="32" cy="32" r="${ringR}" fill="none" stroke="rgb(var(--c-accent-600))" stroke-width="6" stroke-linecap="round"
               stroke-dasharray="${ringC}" stroke-dashoffset="${ringOffset}"/>
           </svg>
           <div class="absolute inset-0 flex items-center justify-center">
@@ -1264,11 +1412,11 @@ function renderFeedTab() {
           </div>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="text-[9.5px] font-bold uppercase tracking-[0.14em]" style="color:#67887A">Current</div>
+          <div class="text-[9.5px] font-bold uppercase tracking-[0.14em]" style="color:rgb(var(--c-accent-800))">Current</div>
           <div class="text-[13.5px] font-display font-bold text-ink truncate mt-0.5">${escapeHtml(ringTitle)}</div>
           <div class="text-[10.5px] text-ink2 font-medium mt-0.5">${ringSub}</div>
         </div>
-        <button data-action="goto-tab" data-tab="calendar" class="text-[10px] font-bold flex items-center gap-1 shrink-0" style="color:#67887A">Pace ${icon('chevronRight','w-3 h-3')}</button>
+        <button data-action="goto-tab" data-tab="calendar" class="text-[10px] font-bold flex items-center gap-1 shrink-0" style="color:rgb(var(--c-accent-800))">Pace ${icon('chevronRight','w-3 h-3')}</button>
       </div>
       ${bodyHtml}
     </div>
@@ -1436,9 +1584,9 @@ function renderUploadTab() {
     <div class="p-4 space-y-4">
       ${sectionRuleHTML('New assignment', 'Upload a photo or PDF of any assignment, or paste the problems as text.')}
 
-      <div id="dropzone" data-action="open-file" class="border-2 border-dashed border-line hover:border-accent-500/50 bg-surface/60 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition">
+      <div id="dropzone" data-action="open-file" class="border-2 border-dashed border-accent-500/45 hover:border-accent-500 bg-surface rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition">
         <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx,.txt">
-        <div class="w-12 h-12 rounded-full bg-surface2 border border-line flex items-center justify-center text-ink2 mb-3">${icon('upload', 'w-6 h-6')}</div>
+        <div class="w-14 h-14 rounded-full flex items-center justify-center mb-3.5" style="background:rgb(var(--c-accent-50));color:rgb(var(--c-accent-800))">${icon('upload', 'w-6 h-6')}</div>
         <p class="text-sm font-semibold text-ink">Tap to upload or drag &amp; drop</p>
         <p class="text-[11px] text-ink3 mt-1">PDF, DOCX, TXT, JPG, PNG &middot; Max 10MB</p>
       </div>
@@ -1477,7 +1625,7 @@ function pendingUploadFormHTML() {
         <span class="text-xs font-bold text-ink">Assignment details</span>
         <button data-action="cancel-pending" class="text-ink3">${icon('x','w-4 h-4')}</button>
       </div>
-      ${uploadedImageData ? `<div class="overflow-hidden rounded-xl border border-line bg-black flex justify-center max-h-40"><img src="${uploadedImageData}" class="object-contain w-full h-full"></div>` : ''}
+      ${uploadedImageData ? `<div class="overflow-hidden rounded-xl border border-line bg-surface2 flex justify-center max-h-40"><img src="${uploadedImageData}" class="object-contain w-full h-full"></div>` : ''}
       <div class="space-y-2">
         <div>
           <label class="text-[10px] font-bold text-ink3 uppercase tracking-wider">Title</label>
@@ -1589,7 +1737,7 @@ function showReadingOverlay() {
     <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
       <div class="bg-surface border border-line rounded-2xl p-6 w-full max-w-xs space-y-4 pop text-center">
         <div class="w-12 h-12 rounded-full border-2 border-line flex items-center justify-center mx-auto relative">
-          <span class="w-12 h-12 rounded-full border-2 border-transparent absolute inset-0 animate-spin" style="border-top-color:#A7C4B8"></span>
+          <span class="w-12 h-12 rounded-full border-2 border-transparent absolute inset-0 animate-spin" style="border-top-color:rgb(var(--c-accent-500))"></span>
           ${icon('sparkle', 'w-5 h-5 text-accent-500')}
         </div>
         <div>
@@ -1866,8 +2014,8 @@ function runProcessing(onDone) {
         <div class="bg-surface border border-line rounded-2xl p-6 w-full max-w-xs space-y-5 pop">
           <div class="w-14 h-14 rounded-full border-2 border-line flex items-center justify-center mx-auto relative">
             <svg class="ring-chart w-14 h-14 absolute" viewBox="0 0 56 56">
-                            <circle cx="28" cy="28" r="24" fill="none" stroke="#E2E1DD" stroke-width="4"/>
-              <circle cx="28" cy="28" r="24" fill="none" stroke="#A7C4B8" stroke-width="4" stroke-linecap="round"
+                            <circle cx="28" cy="28" r="24" fill="none" stroke="rgb(var(--c-surface2))" stroke-width="4"/>
+              <circle cx="28" cy="28" r="24" fill="none" stroke="rgb(var(--c-accent-500))" stroke-width="4" stroke-linecap="round"
                 stroke-dasharray="${2*Math.PI*24}" stroke-dashoffset="${2*Math.PI*24*(1-pct/100)}"/>
             </svg>
             ${icon('fileText','w-5 h-5 text-accent-500')}
@@ -1919,54 +2067,103 @@ function workPlayerTargetExists(wp) {
   return !!getStep(p, wp.stepId);
 }
 
-function renderAssignmentList() {
-  if (state.assignments.length === 0) {
-    return `<div class="p-4"><div class="p-8 text-center bg-surface border border-line rounded-xl space-y-2 enter">
-      <p class="text-xs text-ink2">No assignments yet.</p>
-      <button data-action="goto-tab" data-tab="upload" class="text-xs font-bold text-accent-500">Import homework</button>
-    </div></div>`;
-  }
-  const cards = state.assignments.map(ass => {
-    if (state.ui.confirmDeleteId === ass.id) {
-      return `
-      <div class="p-4 rounded-xl bg-surface border border-bad/40 space-y-3 enter">
-        <div class="text-xs text-ink"><span class="font-bold">Remove "${escapeHtml(ass.title)}"?</span> <span class="text-ink2">This can't be undone.</span></div>
-        <div class="flex items-center gap-2">
-          <button data-action="cancel-delete-assignment" class="flex-1 py-2 rounded-xl bg-surface2 border border-line text-ink text-xs font-bold">Cancel</button>
-          <button data-action="confirm-delete-assignment" data-ass="${ass.id}" class="flex-1 py-2 rounded-xl bg-bad text-white text-xs font-bold">Remove</button>
-        </div>
-      </div>`;
+/* ============================== LIBRARY ==============================
+   The Work tab's list view, built to the design reference: a search field,
+   a row of subject chips and one card per assignment. Filter state lives in
+   state.ui, so it is scoped to the session rather than persisted  -  a
+   half-typed search should not greet you tomorrow.
+   ==================================================================== */
+function libraryIsFiltered() {
+  return !!(state.ui.librarySearch || '').trim()
+      || (state.ui.librarySubject || 'All') !== 'All'
+      || !!state.ui.libraryHideDone;
+}
+
+function libraryFilteredAssignments() {
+  const q = (state.ui.librarySearch || '').trim().toLowerCase();
+  const subject = state.ui.librarySubject || 'All';
+  return state.assignments.filter(ass => {
+    if (subject !== 'All' && (ass.subject || 'Other') !== subject) return false;
+    if (state.ui.libraryHideDone) {
+      const st = getAssignmentStats(ass);
+      if (st.total > 0 && st.completed === st.total) return false;
     }
-    const stats = getAssignmentStats(ass);
-    const pct = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
-    const done = pct === 100;
-    const daysLeft = daysUntil(ass.dueDate);
+    if (!q) return true;
+    return `${ass.title || ''} ${ass.subject || ''}`.toLowerCase().includes(q);
+  });
+}
+
+// Rows only  -  kept separate from the screen so typing can repaint the list
+// without replacing the search field and losing focus mid-word.
+function libraryRowsHTML() {
+  const rows = libraryFilteredAssignments();
+  if (rows.length === 0) {
+    const filtered = libraryIsFiltered();
+    return `<div class="p-8 text-center bg-surface border border-line rounded-xl space-y-2 enter">
+      <p class="text-xs text-ink2">${filtered ? 'No assignments match those filters.' : 'No assignments yet.'}</p>
+      ${filtered
+        ? `<button data-action="library-reset" class="text-xs font-semibold text-accent-500">Clear filters</button>`
+        : `<button data-action="goto-tab" data-tab="upload" class="text-xs font-semibold text-accent-500">Import homework</button>`}
+    </div>`;
+  }
+  return rows.map(ass => {
+    const st = getAssignmentStats(ass);
+    const pct = st.total ? Math.round((st.completed / st.total) * 100) : 0;
     return `
-      <div data-action="open-assignment" data-ass="${ass.id}" class="p-4 rounded-xl bg-surface border border-line space-y-3 cursor-pointer enter">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0 flex items-start gap-2.5">
-            ${subjectChipHTML(ass.subject)}
-            <div class="min-w-0">
-              <span class="text-[9.5px] font-bold px-2 py-0.5 rounded border ${done ? 'text-good bg-good/10 border-good/25' : 'text-ink2 bg-surface2 border-line'}">${done ? 'Completed' : 'In Progress'}</span>
-              <h3 class="text-[13px] font-bold text-ink mt-1 truncate">${escapeHtml(ass.title)}</h3>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="text-xs font-mono text-ink2">${pct}%</span>
-            <button data-action="ask-delete-assignment" data-ass="${ass.id}" class="text-ink3 hover:text-bad p-0.5">${icon('trash','w-3.5 h-3.5')}</button>
-          </div>
+      <div data-action="open-assignment" data-ass="${ass.id}" role="button" tabindex="0"
+           class="p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3 cursor-pointer enter">
+        ${subjectChipHTML(ass.subject)}
+        <div class="min-w-0 flex-1">
+          <h3 class="text-[13.5px] font-semibold text-ink truncate">${escapeHtml(ass.title)}</h3>
+          <p class="text-[11.5px] text-ink3 mt-0.5">${st.total} step${st.total === 1 ? '' : 's'} &middot; ${pct}% complete</p>
         </div>
-        <div class="w-full h-1.5 bg-surface2 rounded-full overflow-hidden"><div class="h-full ${done ? 'bg-good' : 'bg-accent-500'}" style="width:${pct}%"></div></div>
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="text-ink2">${stats.completed}/${stats.total} steps &middot; due ${fmtDate(ass.dueDate)} (${daysLeft}d)</span>
-          <button data-action="export-assignment" data-ass="${ass.id}" class="text-accent-500 font-bold flex items-center gap-1">${icon('fileText','w-3.5 h-3.5')} Export</button>
-        </div>
+        ${icon('chevronRight', 'w-4 h-4 text-ink3 shrink-0')}
       </div>`;
   }).join('');
+}
+
+function renderAssignmentList() {
+  const active = state.ui.librarySubject || 'All';
+  // The selected chip borrows .grad-btn, so its sage fill and deep-ink label
+  // come from the same place as every other filled control in the app.
+  const chips = ['All', ...SUBJECTS].map(s => `
+    <button data-action="library-subject" data-subject="${s}" aria-pressed="${active === s}"
+      class="px-3.5 py-1.5 text-[12px] shrink-0 ${active === s
+        ? 'grad-btn'
+        : 'rounded-lg bg-surface border border-line text-ink2 font-medium'}">${s}</button>`).join('');
+  const search = state.ui.librarySearch || '';
+  const hideDone = !!state.ui.libraryHideDone;
   return `<div class="p-4 space-y-4">
-    ${sectionRuleHTML('Assignments', 'Track progress and export your submission.')}
-    <div class="space-y-3">${cards}</div>
+    ${sectionRuleHTML('Library')}
+    <div class="flex items-center gap-2">
+      <div class="flex-1 min-w-0 flex items-center gap-2 pl-3.5 pr-2 h-11 rounded-lg bg-surface border border-line">
+        <span class="text-ink3 shrink-0">${icon('search', 'w-4 h-4')}</span>
+        <input id="library-search" type="text" autocomplete="off" spellcheck="false"
+               value="${escapeHtml(search)}" aria-label="Search assignments"
+               placeholder="Search your past problems..."
+               class="flex-1 min-w-0 bg-transparent text-[13px] text-ink">
+        <button id="library-clear" data-action="library-clear-search" aria-label="Clear search"
+                class="w-6 h-6 rounded-lg bg-surface2 text-ink2 flex items-center justify-center shrink-0 ${search ? '' : 'hidden'}">${icon('x', 'w-3 h-3')}</button>
+      </div>
+      <button data-action="library-toggle-filter" aria-pressed="${hideDone}"
+              title="${hideDone ? 'Show completed assignments' : 'Hide completed assignments'}"
+              aria-label="${hideDone ? 'Show completed assignments' : 'Hide completed assignments'}"
+              class="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${hideDone
+                ? 'bg-accent-100 text-accent-500'
+                : 'bg-surface border border-line text-ink2'}">${icon('filter', 'w-[18px] h-[18px]')}</button>
+    </div>
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 py-0.5">${chips}</div>
+    <div id="library-list" class="space-y-3">${libraryRowsHTML()}</div>
   </div>`;
+}
+
+// Repaints the rows in place and keeps the clear affordance in step with the
+// field, so a keystroke never costs the caret.
+function refreshLibraryList() {
+  const list = document.getElementById('library-list');
+  if (list) list.innerHTML = libraryRowsHTML();
+  const clear = document.getElementById('library-clear');
+  if (clear) clear.classList.toggle('hidden', !(state.ui.librarySearch || '').trim().length);
 }
 
 function renderAssignmentDetail(ass) {
@@ -2216,7 +2413,7 @@ function renderCalendarTab() {
     grid += `
       <div class="aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold border relative ${isToday ? 'bg-ink text-bg border-ink' : 'bg-surface border-line text-ink2'}">
         <span>${d.getDate()}</span>
-        ${dueHere ? `<span class="absolute bottom-1 w-1.5 h-1.5 rounded-full ${isToday ? 'bg-black' : 'bg-accent-500'}"></span>` : ''}
+        ${dueHere ? `<span class="absolute bottom-1 w-1.5 h-1.5 rounded-full ${isToday ? 'bg-bg' : 'bg-accent-500'}"></span>` : ''}
       </div>`;
   }
 
@@ -2246,7 +2443,7 @@ function openExportSheet(assId) {
   const ass = getAssignment(assId);
   const root = document.getElementById('overlay-root');
   root.innerHTML = `
-    <div class="absolute inset-0 bg-black z-50 flex flex-col">
+    <div class="absolute inset-0 bg-bg z-50 flex flex-col">
       <div class="app-header p-4 border-b border-line flex items-center justify-between bg-bg shrink-0">
         <div><h3 class="text-sm font-bold text-ink">Submission Sheet</h3><p class="text-[10.5px] text-ink2">${escapeHtml(ass.title)}</p></div>
         <div class="flex items-center gap-2">
@@ -2301,6 +2498,36 @@ async function shareSheet(assId) {
   catch (e) { /* user cancelled the native share sheet  -  not an error */ }
 }
 
+/* ============================== APPEARANCE ============================== */
+const THEME_MODES = [
+  { id: 'light',  label: 'Light',  icon: 'sun',    sub: 'Warm paper' },
+  { id: 'dark',   label: 'Dark',   icon: 'moon',   sub: 'Low light' },
+  { id: 'system', label: 'System', icon: 'sparkle', sub: 'Match device' },
+];
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+// The palette is a set of CSS variables keyed off <html data-theme>, so switching
+// themes is a single attribute write  -  nothing re-renders.
+function resolvedTheme() {
+  const mode = state.theme || 'system';
+  if (mode === 'system') return darkQuery.matches ? 'dark' : 'light';
+  return mode;
+}
+function applyTheme() {
+  const theme = resolvedTheme();
+  document.documentElement.setAttribute('data-theme', theme);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#1A1A1C' : '#FAF9F6');
+}
+function setTheme(mode) {
+  state.theme = mode;
+  applyTheme();
+  saveState();
+  openSettingsSheet();
+}
+// Only follow the OS while the user is actually on "System".
+darkQuery.addEventListener('change', () => { if ((state.theme || 'system') === 'system') applyTheme(); });
+
 /* ============================== SETTINGS / DATA ============================== */
 function totalStepsDone() {
   let done = 0;
@@ -2316,7 +2543,7 @@ function totalCardsReviewed() {
 function openSettingsSheet() {
   const root = document.getElementById('overlay-root');
   root.innerHTML = `
-    <div class="absolute inset-0 bg-black z-50 flex flex-col">
+    <div class="absolute inset-0 bg-bg z-50 flex flex-col">
       <div class="app-header p-4 border-b border-line flex items-center justify-between bg-bg shrink-0">
         <h3 class="text-sm font-bold text-ink font-display">Settings</h3>
         <button data-action="close-settings" class="p-1.5 rounded-lg bg-surface2 border border-line text-ink2">${icon('x','w-4 h-4')}</button>
@@ -2326,6 +2553,21 @@ function openSettingsSheet() {
           <div><div class="text-lg font-display font-bold text-ink">${state.assignments.length}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Assignments</div></div>
           <div><div class="text-lg font-display font-bold text-ink">${totalStepsDone()}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Steps done</div></div>
           <div><div class="text-lg font-display font-bold text-ink">${state.streakDays || 0}</div><div class="text-[10px] text-ink3 uppercase tracking-wide mt-0.5">Day streak</div></div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Appearance</h4>
+          <div class="grid grid-cols-3 gap-2">
+            ${THEME_MODES.map(m => {
+              const on = (state.theme || 'system') === m.id;
+              return `<button data-action="set-theme" data-theme-mode="${m.id}"
+                class="p-3 rounded-xl flex flex-col items-center gap-1.5 text-center transition-colors ${on ? 'bg-accent-50 border border-accent-500' : 'bg-surface border border-line'}">
+                <span class="${on ? 'text-accent-500' : 'text-ink3'}">${icon(m.icon, 'w-4 h-4')}</span>
+                <span class="text-[11px] font-bold ${on ? 'text-ink' : 'text-ink2'}">${m.label}</span>
+                <span class="text-[9.5px] text-ink3 leading-tight">${m.sub}</span>
+              </button>`;
+            }).join('')}
+          </div>
         </div>
 
         <div class="space-y-2">
@@ -2446,6 +2688,8 @@ function bindDynamicHandlers() {
   if (raw) raw.oninput = () => { state.ui.draftText = raw.value; };
   const scopeSel = document.getElementById('feed-scope-select');
   if (scopeSel) scopeSel.onchange = () => { state.ui.feedScope = scopeSel.value; state.ui.feedFocusKey = null; render(); };
+  const libSearch = document.getElementById('library-search');
+  if (libSearch) libSearch.oninput = () => { state.ui.librarySearch = libSearch.value; refreshLibraryList(); };
   const importInput = document.getElementById('import-file-input');
   if (importInput) importInput.onchange = e => { handleImportFile(e.target.files[0]); e.target.value = ''; };
   attachSwipeHandlers();
@@ -2488,6 +2732,10 @@ document.addEventListener('click', e => {
     render();
   }
   else if (a === 'open-assignment') { state.ui.workView = 'detail'; state.ui.workAssignmentId = t.dataset.ass; render(); }
+  else if (a === 'library-subject') { state.ui.librarySubject = t.dataset.subject; render(); }
+  else if (a === 'library-toggle-filter') { state.ui.libraryHideDone = !state.ui.libraryHideDone; render(); }
+  else if (a === 'library-clear-search') { state.ui.librarySearch = ''; render(); }
+  else if (a === 'library-reset') { state.ui.librarySearch = ''; state.ui.librarySubject = 'All'; state.ui.libraryHideDone = false; render(); }
   else if (a === 'ask-delete-assignment') { state.ui.confirmDeleteId = t.dataset.ass; render(); }
   else if (a === 'cancel-delete-assignment') { state.ui.confirmDeleteId = null; render(); }
   else if (a === 'confirm-delete-assignment') {
@@ -2626,6 +2874,7 @@ document.addEventListener('click', e => {
 
   else if (a === 'share-sheet') shareSheet(t.dataset.ass);
   else if (a === 'open-settings') openSettingsSheet();
+  else if (a === 'set-theme') setTheme(t.dataset.themeMode);
   else if (a === 'close-settings') { document.getElementById('overlay-root').innerHTML = ''; }
   else if (a === 'close-overlay-generic') { document.getElementById('overlay-root').innerHTML = ''; }
   else if (a === 'export-data') exportAllData();
@@ -2680,6 +2929,7 @@ document.addEventListener('input', e => {
 
 /* ============================== BOOT ============================== */
 loadState();
+applyTheme();
 switchTab(state.ui.tab || 'feed');
 
 if ('serviceWorker' in navigator) {
