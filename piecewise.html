@@ -3010,6 +3010,13 @@ function daysBetween(fromIso, toIso) {
   const a = new Date(fromIso + 'T12:00:00'), b = new Date(toIso + 'T12:00:00');
   return Math.round((b - a) / 86400000);
 }
+// Offset from a given day rather than from today, which is what review scheduling
+// needs: an old save's next due date hangs off the day it was last answered.
+function addDays(iso, n) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + (n || 0));
+  return d.toISOString().split('T')[0];
+}
 function studyCountOn(iso) { return state.studyLog?.[iso] || 0; }
 function studiedToday() { return studyCountOn(dateKey(0)); }
 function goalMetToday() { return studiedToday() >= (state.dailyGoal || 10); }
@@ -3103,6 +3110,28 @@ function dailyGoalCardHTML() {
       </div>
       ${streakWeekHTML()}
     </div>`;
+}
+
+/* "N due today" is the reason to open the app on a day the streak is already
+   safe. A streak only says you showed up; this says there is something specific
+   waiting, which is the part the spacing actually buys. Hidden at zero rather
+   than shown as "0 due", which reads as a chore list you have failed to clear. */
+function dueTodayCardHTML(examKey) {
+  const n = examKey ? dueSkills(examKey).length : dueCountAll();
+  if (!n) return '';
+  const body = `
+    <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+         style="background:rgb(var(--c-sky-100));color:rgb(var(--c-sky-700))">${icon('clock','w-5 h-5')}</div>
+    <div class="min-w-0 flex-1">
+      <div class="text-sm font-bold text-ink">${n} card${n === 1 ? '' : 's'} due today</div>
+      <div class="text-[11px] text-ink2 mt-0.5">${examKey
+        ? 'Spaced review &mdash; a mix starts with these'
+        : 'Pick your exam below to work through them'}</div>
+    </div>`;
+  // Only actionable once an exam is chosen, since that is what a mix is built from.
+  return examKey
+    ? `<button data-action="start-mixed" data-exam="${escapeHtml(examKey)}" class="w-full p-4 rounded-2xl bg-surface border border-line text-left flex items-center gap-3.5">${body}${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}</button>`
+    : `<div class="w-full p-4 rounded-2xl bg-surface border border-line flex items-center gap-3.5">${body}</div>`;
 }
 
 // Trailing seven days, oldest first, for the week strip.
@@ -4473,12 +4502,16 @@ function completeStudyCard(deckId, skillId, selectedIndex, cardId) {
   // equations" is the fact worth keeping, and it has to survive the question
   // itself being different numbers every time.
   const prev = state.studyProgress[deckId][skillId] || {};
+  // The next review rides along with the answer rather than being recomputed from
+  // the attempt history later, so "what do I owe today" stays a date comparison.
+  const interval = nextInterval(prev, correct);
   state.studyProgress[deckId][skillId] = {
     selectedIndex, correct, completedAt: todayStr(),
     attempts: (prev.attempts || 0) + 1,
     wrong: (prev.wrong || 0) + (correct ? 0 : 1),
     streak: correct ? (prev.streak || 0) + 1 : 0,
     lastWrongAt: correct ? (prev.lastWrongAt || null) : todayStr(),
+    interval, dueAt: dateKey(interval),
   };
   recordSessionResult(deckId, skillId, correct, true);
   const hitGoal = recordStudyCard();
@@ -4489,9 +4522,12 @@ function completeStudyCard(deckId, skillId, selectedIndex, cardId) {
 function completeFreeStudyCard(deckId, skillId, text) {
   if (!state.studyProgress[deckId]) state.studyProgress[deckId] = {};
   const prev = state.studyProgress[deckId][skillId] || {};
+  // A written answer isn't graded, so it counts as a pass and climbs the ladder.
+  const interval = nextInterval(prev, true);
   state.studyProgress[deckId][skillId] = {
     response: text, completedAt: todayStr(),
     attempts: (prev.attempts || 0) + 1, wrong: prev.wrong || 0, streak: (prev.streak || 0) + 1,
+    interval, dueAt: dateKey(interval),
   };
   recordSessionResult(deckId, skillId, true, false);
   const hitGoal = recordStudyCard();
@@ -4649,6 +4685,8 @@ function generateCard(deckId, skillId, seed) {
    builders consult alongside the weakness pools.
    ========================================================================== */
 const MASTERY_STREAK = 2;    // right this many times running before a card is settled
+const REVIEW_LADDER = [1, 3, 7, 21];   // days until a skill is owed again
+
 function cardStat(deckId, skillId) {
   const r = state.studyProgress[deckId]?.[skillId];
   return { attempts: r?.attempts || 0, wrong: r?.wrong || 0, streak: r?.streak || 0, seen: !!r };
@@ -4658,17 +4696,80 @@ function isShaky(deckId, skillId) {
   const s = cardStat(deckId, skillId);
   return s.wrong > 0 && s.streak < MASTERY_STREAK;
 }
+
+/* Which rung a record is standing on when it carries no interval of its own  -
+   every save written before scheduling existed. Nothing has to be migrated or
+   thrown away, because the field that implies a rung is already there: each
+   correct answer in a row is one rung climbed, so the first put the skill on the
+   bottom rung and a streak of n has it on rung n-1. A skill still owed is back on
+   the bottom rung however long its history, which is the point of being shaky. */
+function derivedRung(rec) {
+  if (!rec) return 0;
+  if ((rec.wrong || 0) > 0 && (rec.streak || 0) < MASTERY_STREAK) return 0;
+  return Math.max(0, Math.min((rec.streak || 0) - 1, REVIEW_LADDER.length - 1));
+}
+// The highest rung a given gap has actually earned. Rounding down matters: an
+// interval that isn't on the ladder (hand-edited, or left by a build with
+// different rungs) must not be credited with a rung it never reached.
+function rungOfInterval(days) {
+  let rung = 0;
+  REVIEW_LADDER.forEach((d, i) => { if (d <= days) rung = i; });
+  return rung;
+}
+/* A correct answer climbs one rung, a miss drops back to the bottom. Deliberately
+   not SM-2: the claim this app makes is that material returns on a widening
+   schedule, not that the schedule is individually optimal, and a four-rung ladder
+   is legible in a way an ease factor never is. */
+function nextInterval(rec, correct) {
+  if (!correct) return REVIEW_LADDER[0];
+  // A skill with no history at all is not climbing from anywhere: getting it
+  // right the first time earns the bottom rung, not the second one.
+  if (!rec || !rec.attempts) return REVIEW_LADDER[0];
+  const rung = rec.interval ? rungOfInterval(rec.interval) : derivedRung(rec);
+  return REVIEW_LADDER[Math.min(rung + 1, REVIEW_LADDER.length - 1)];
+}
+/* When a skill is next owed. A record with no dueAt gets one reconstructed from
+   the day it was last answered plus the gap its streak had earned, which puts
+   long-neglected material due immediately  -  which is right: it is overdue. */
+function skillSchedule(deckId, skillId) {
+  const rec = state.studyProgress[deckId]?.[skillId];
+  if (!rec) return null;            // never answered; that is the unseen pool's business
+  const interval = rec.interval || REVIEW_LADDER[derivedRung(rec)];
+  const dueAt = rec.dueAt || (rec.completedAt ? addDays(rec.completedAt, interval) : todayStr());
+  return { interval, dueAt };
+}
+function isDue(deckId, skillId, onIso) {
+  const s = skillSchedule(deckId, skillId);
+  return !!s && s.dueAt <= (onIso || todayStr());
+}
+// Every skill one exam owes a review, as queue-shaped refs the builders can take.
+function dueSkills(examKey, onIso) {
+  const out = [];
+  STUDY_DECKS.filter(d => d.exam === examKey).forEach(d => deckSkills(d).forEach(sk => {
+    if (isDue(d.id, sk.skillId, onIso)) out.push({ deckId: d.id, skillId: sk.skillId });
+  }));
+  return out;
+}
+function deckDueCount(deck, onIso) {
+  return deckSkills(deck).filter(sk => isDue(deck.id, sk.skillId, onIso)).length;
+}
+// Across every deck, for the exam grid, where no exam has been picked yet.
+function dueCountAll(onIso) {
+  return STUDY_DECKS.reduce((n, d) => n + deckDueCount(d, onIso), 0);
+}
+
 function deckStats(deck) {
-  let attempts = 0, wrong = 0, seen = 0, shaky = 0;
+  let attempts = 0, wrong = 0, seen = 0, shaky = 0, due = 0;
   const skills = deckSkills(deck);
   skills.forEach(sk => {
     const s = cardStat(deck.id, sk.skillId);
     attempts += s.attempts; wrong += s.wrong;
     if (s.seen) seen++;
     if (isShaky(deck.id, sk.skillId)) shaky++;
+    if (isDue(deck.id, sk.skillId)) due++;
   });
   return {
-    deck, attempts, wrong, seen, shaky,
+    deck, attempts, wrong, seen, shaky, due,
     total: skills.length,
     generated: (deck.templates || []).length > 0,
     accuracy: attempts ? (attempts - wrong) / attempts : null,  // null = untested
@@ -4701,11 +4802,17 @@ function weightedPick(weights) {
 
 /* Builds a session that leans into weak spots while staying varied.
 
-   Roughly half the queue is cards you have actually missed, a third is material
-   you have never seen, and the rest is revision. Within the unseen and revision
+   Roughly half the queue is cards you have actually missed, then whatever the
+   review ladder says is owed today, then material you have never seen, and the
+   remainder is revision that isn't due yet. Within the due, unseen and revision
    pools, topics are sampled by weakness, so a shaky topic comes up more often
    without ever being the only thing you see. A per-topic cap keeps one weak
-   topic from swallowing the session. */
+   topic from swallowing the session.
+
+   Due material sits behind shaky rather than ahead of it on purpose: a skill you
+   missed this morning is more urgent than one whose three weeks happen to be up,
+   and anything still shaky is on the bottom rung anyway, so it is almost always
+   due as well. The pools are disjoint, so this is about ordering, not duplication. */
 /* A single-topic session: same weighting idea, one deck. Templated decks mint a
    goal-sized run; a deck of static cards still plays through in order. */
 function buildDeckQueue(deck, size) {
@@ -4716,15 +4823,17 @@ function buildDeckQueue(deck, size) {
   const n = Math.max(5, size || sessionSize());
   const shaky = shuffled(skills.filter(sk => isShaky(deck.id, sk.skillId)));
   const unseen = shuffled(skills.filter(sk => !cardStat(deck.id, sk.skillId).seen));
-  const rest = shuffled(skills.filter(sk => !shaky.includes(sk) && !unseen.includes(sk)));
+  const due = shuffled(skills.filter(sk => !shaky.includes(sk) && !unseen.includes(sk) && isDue(deck.id, sk.skillId)));
+  const rest = shuffled(skills.filter(sk => !shaky.includes(sk) && !unseen.includes(sk) && !due.includes(sk)));
   const picked = [];
   const take = (pool, upTo) => pool.forEach(sk => { if (picked.length < upTo && !picked.includes(sk)) picked.push(sk); });
   take(shaky, Math.ceil(n * 0.5));
-  take(unseen, Math.ceil(n * 0.85));
+  take(due, Math.ceil(n * 0.75));
+  take(unseen, Math.ceil(n * 0.9));
   take(rest, n);
-  take(shaky, n); take(unseen, n);
+  take(due, n); take(shaky, n); take(unseen, n);
   // Templates can repeat within a run with different numbers once skills run out.
-  // This is also what keeps an endless run going once the skills are exhausted.
+  // This is also what keeps an endless run going once everything due is cleared.
   while (picked.length < n && skills.length) picked.push(skills[picked.length % skills.length]);
   return shuffled(picked).map(sk => materializeCard(sk, (Math.random() * 1e9) | 0));
 }
@@ -4734,11 +4843,14 @@ function buildMixedQueue(examKey, size) {
   const topics = examTopics(examKey);
   if (!topics.length) return [];
 
-  const pools = { shaky: [], unseen: [], review: [] };
+  // Disjoint by design, in order of claim: missed beats owed beats never-seen, and
+  // what's left is revision the ladder says can wait.
+  const pools = { shaky: [], due: [], unseen: [], review: [] };
   topics.forEach(t => deckSkills(t.deck).forEach(sk => {
     const ref = { deckId: t.deck.id, skillId: sk.skillId };
     if (isShaky(t.deck.id, sk.skillId)) pools.shaky.push(ref);
     else if (!cardStat(t.deck.id, sk.skillId).seen) pools.unseen.push(ref);
+    else if (isDue(t.deck.id, sk.skillId)) pools.due.push(ref);
     else pools.review.push(ref);
   }));
 
@@ -4778,10 +4890,20 @@ function buildMixedQueue(examKey, size) {
       if (!push(ref) && out.length >= n) break;
     }
   };
-  fill(pools.unseen, Math.min(n, out.length + Math.ceil(n * 0.35)));
+  /* Cumulative targets, not per-pool shares, so a pool that comes up empty hands
+     its room to the next one down rather than leaving it to revision. That
+     matters most on a day with nothing shaky: the 50% reserved for missed cards
+     has to flow to what the ladder says is owed, not to material that isn't due
+     yet. New material still gets the gap between the due and unseen marks, so a
+     backlog of reviews can't crowd it out entirely. */
+  fill(pools.due, Math.ceil(n * 0.75));
+  fill(pools.unseen, Math.ceil(n * 0.9));
   fill(pools.review, n);
-  fill(pools.unseen, n);          // second pass in case review ran dry
-  fill(pools.shaky, n);           // and finally let shaky cards top it up
+  // Second passes, so a dry pool is never a short session: whatever is left over
+  // tops it up, due material first because that is what the schedule asked for.
+  fill(pools.due, n);
+  fill(pools.unseen, n);
+  fill(pools.shaky, n);
 
   // Interleave so it never reads as "all your mistakes, then everything else",
   // then mint an actual question for each slot.
@@ -4811,6 +4933,7 @@ function renderExamGrid() {
   }).join('');
   return `<div class="p-4 space-y-4">
     ${dailyGoalCardHTML()}
+    ${dueTodayCardHTML(null)}
     ${sectionRuleHTML('Test prep', 'Pick the exam you are studying for. We’ll remember it.')}
     <div class="grid grid-cols-2 gap-3">${cards}</div>
   </div>`;
@@ -4825,7 +4948,7 @@ function renderDeckList(examKey) {
       <button data-action="start-deck" data-deck="${d.id}" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center justify-between gap-3 text-left">
         <div class="min-w-0">
           <div class="text-xs font-bold text-ink">${escapeHtml(d.title)}</div>
-          <div class="text-[10.5px] text-ink3">${t.seen}/${t.total} seen${pct !== null ? ` &middot; ${pct}% correct` : ''}${t.shaky ? ` &middot; ${t.shaky} to revisit` : ''}</div>
+          <div class="text-[10.5px] text-ink3">${t.seen}/${t.total} seen${pct !== null ? ` &middot; ${pct}% correct` : ''}${t.shaky ? ` &middot; ${t.shaky} to revisit` : ''}${t.due ? ` &middot; ${t.due} due` : ''}</div>
         </div>
         ${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}
       </button>`;
@@ -4881,6 +5004,7 @@ function renderDeckList(examKey) {
   const exam = EXAMS.find(e => e.key === examKey);
   return `<div class="p-4 space-y-4">
     ${dailyGoalCardHTML()}
+    ${dueTodayCardHTML(examKey)}
     <div class="flex items-end justify-between gap-3">
       <div class="min-w-0">
         <h2 class="text-[17px] font-display font-semibold text-ink tracking-tight">${examKey}</h2>
