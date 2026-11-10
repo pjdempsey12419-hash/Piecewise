@@ -435,6 +435,7 @@
 
     <input type="file" id="import-file-input" class="hidden" accept="application/json,.json">
     <div id="overlay-root"></div>
+    <div id="auth-root"></div>
   </div>
 </div>
 
@@ -477,6 +478,11 @@ const ICONS = {
   search: '<circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16 16"/>',
   filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
   infinity: '<path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 16 0v1"/>',
+  logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  send: '<path d="M21 3 10.5 13.5"/><path d="M21 3l-6.8 18-3.7-7.5L3 9.8 21 3z"/>',
+  barChart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
 };
 function icon(name, cls) {
   return `<svg class="${cls || 'w-4 h-4'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
@@ -2912,7 +2918,10 @@ const EXAMS = [
 ];
 
 /* ============================== STATE ============================== */
-let state = {
+// Built fresh each time rather than kept as one literal, because signing out has
+// to leave nothing of the previous person behind for the next one to find.
+function freshState() {
+  return {
   assignments: [],
   studyProgress: {},
   // The exam being studied for lives outside `ui` on purpose: `ui` is deliberately
@@ -2939,14 +2948,19 @@ let state = {
         studyResults: [], studyEnded: false,
         draftText: '', draftAnswers: {}, pendingUpload: null, feedFocusKey: null, feedScope: 'mix', feedSkipped: [], confirmDeleteId: null, confirmClearData: false,
         librarySearch: '', librarySubject: 'All', libraryHideDone: false }
-};
+  };
+}
+let state = freshState();
 
 function loadState() {
+  // Each account keeps its own save. Signing in loads that one and nothing else,
+  // which is what stops one person's streak showing up under another's name.
+  const key = accounts.activeId ? userStateKey(accounts.activeId) : LEGACY_STATE_KEY;
   try {
-    const saved = localStorage.getItem('piecewise_v2');
+    const saved = localStorage.getItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
-      state = Object.assign(state, parsed, { ui: state.ui });
+      state = Object.assign(freshState(), parsed, { ui: freshState().ui });
     }
   } catch (e) {}
   if (!state.assignments || state.assignments.length === 0) {
@@ -2961,11 +2975,13 @@ function loadState() {
   // into dark mode. Light is the intended default, so move saves that never had a
   // deliberate choice across to it; anything the user picked themselves stands.
   if (!state.themeChosen) state.theme = 'light';
+  if (!state.usage) state.usage = freshUsage();
 }
 function saveState() {
+  if (!accounts.activeId) return;        // signed out: nothing of theirs to write
   try {
     const { ui, ...persist } = state;
-    localStorage.setItem('piecewise_v2', JSON.stringify(persist));
+    localStorage.setItem(userStateKey(accounts.activeId), JSON.stringify(persist));
   } catch (e) {}
   const el = document.getElementById('streak-counter');
   if (el) el.textContent = state.streakDays || 0;
@@ -2981,6 +2997,544 @@ function saveState() {
 
 function markActivity() {
   state.lastActiveDate = todayStr();
+}
+
+/* ============================== ACCOUNTS ==============================
+   An honest description of what this is: a profile gate, not a security
+   boundary. There is no server, so everything here runs on the device and
+   anyone with devtools can read or bypass it. What it DOES buy is real and
+   worth having  -  several people can share a phone or a demo laptop without
+   trampling each other's progress, and signing out stops the next person
+   seeing your streak.
+
+   Passwords are still never stored in the clear. PBKDF2 over a per-account
+   salt costs nothing here and means that if this is ever pointed at a real
+   backend, the shape of the thing is already right and no stored password
+   has to be migrated out of plaintext.
+   ========================================================================== */
+const ACCOUNTS_KEY = 'piecewise_accounts';
+const LEGACY_STATE_KEY = 'piecewise_v2';      // the single-user save, pre-accounts
+const PBKDF2_ROUNDS = 120000;
+const userStateKey = id => `piecewise_user_${id}`;
+
+let accounts = { users: [], activeId: null };
+
+function loadAccounts() {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (raw) accounts = Object.assign({ users: [], activeId: null }, JSON.parse(raw));
+  } catch (e) {}
+  if (!Array.isArray(accounts.users)) accounts.users = [];
+}
+function saveAccounts() {
+  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts)); } catch (e) {}
+}
+function currentUser() {
+  return accounts.users.find(u => u.id === accounts.activeId) || null;
+}
+function findUser(username) {
+  const key = String(username || '').trim().toLowerCase();
+  return accounts.users.find(u => u.username.toLowerCase() === key) || null;
+}
+
+function randomSalt() {
+  const b = new Uint8Array(16);
+  (crypto.getRandomValues ? crypto : window.crypto).getRandomValues(b);
+  return Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+/* crypto.subtle only exists in a secure context, so it is there on the live
+   https site and on localhost but not if the file is opened straight off disk.
+   Rather than refuse to run, fall back to a plain digest and record which was
+   used, so a hash is never checked against one made a different way. */
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  if (crypto.subtle) {
+    try {
+      const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: enc.encode(salt), iterations: PBKDF2_ROUNDS, hash: 'SHA-256' }, key, 256);
+      return { algo: 'pbkdf2', hash: Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('') };
+    } catch (e) {}
+  }
+  let h = 0x811c9dc5;                          // FNV-1a, only ever a fallback
+  const s = salt + '|' + password;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return { algo: 'weak', hash: h.toString(16) };
+}
+async function verifyPassword(user, password) {
+  const { hash, algo } = await hashPassword(password, user.salt);
+  return algo === user.algo && hash === user.hash;
+}
+
+function usernameProblem(name) {
+  const n = String(name || '').trim();
+  if (n.length < 3) return 'Username needs at least 3 characters';
+  if (n.length > 24) return 'Username is too long';
+  if (!/^[A-Za-z0-9_. -]+$/.test(n)) return 'Letters, numbers, spaces, . _ - only';
+  if (findUser(n)) return 'That username is taken on this device';
+  return null;
+}
+function passwordProblem(pw) {
+  if (String(pw || '').length < 6) return 'Password needs at least 6 characters';
+  return null;
+}
+
+/* Signing up adopts the pre-accounts save if one is sitting there unclaimed, so
+   the person who has been using this app all along does not open it one day to
+   find an empty streak. Only the FIRST account gets it; after that a new account
+   starts clean, which is what sharing a device is supposed to mean. */
+async function signUp(username, password) {
+  const salt = randomSalt();
+  const { hash, algo } = await hashPassword(password, salt);
+  const first = accounts.users.length === 0;
+  const user = {
+    id: uid('u'), username: String(username).trim(), salt, hash, algo,
+    createdAt: todayStr(), lastSeen: todayStr(),
+  };
+  accounts.users.push(user);
+  accounts.activeId = user.id;
+  saveAccounts();
+
+  let adopted = false;
+  if (first) {
+    try {
+      const legacy = localStorage.getItem(LEGACY_STATE_KEY);
+      if (legacy && !localStorage.getItem(userStateKey(user.id))) {
+        localStorage.setItem(userStateKey(user.id), legacy);
+        adopted = true;
+      }
+    } catch (e) {}
+  }
+  return { user, adopted };
+}
+async function signIn(username, password) {
+  const user = findUser(username);
+  // Same message either way: on a shared device, "no such user" tells the next
+  // person which usernames exist, which is not theirs to learn.
+  if (!user || !(await verifyPassword(user, password))) return null;
+  user.lastSeen = todayStr();
+  accounts.activeId = user.id;
+  saveAccounts();
+  return user;
+}
+function signOut() {
+  flushUsage();
+  saveState();
+  accounts.activeId = null;
+  saveAccounts();
+  state = freshState();
+  document.getElementById('overlay-root').innerHTML = '';
+  // Someone who just signed out has an account, so show them the sign-in form
+  // rather than making them find their way back from the sign-up one.
+  authMode = 'in';
+  renderAuthGate();
+}
+
+/* ============================== USAGE =================================
+   What gets used, and for how long. Time is only counted while the tab is
+   actually visible: a phone left on the study tab in a pocket is not studying,
+   and a number that counts it is worse than no number at all.
+
+   This stays on the device with everything else. It leaves only when the person
+   using it taps send, which is the whole consent model  -  see shareUsage. */
+const USAGE_TICK_MS = 5000;
+let usageTickAt = null;
+
+function freshUsage() {
+  return { firstSeen: todayStr(), days: {}, features: {}, lastSentAt: null, promptDismissedAt: null };
+}
+function usage() {
+  if (!state.usage) state.usage = freshUsage();
+  if (!state.usage.days) state.usage.days = {};
+  if (!state.usage.features) state.usage.features = {};
+  return state.usage;
+}
+function usageDay(iso) {
+  const u = usage();
+  const key = iso || todayStr();
+  if (!u.days[key]) u.days[key] = { sec: 0, opens: 0 };
+  return u.days[key];
+}
+// Counts one use of a named feature. Names are dotted so they group in a sheet.
+function track(feature) {
+  if (!accounts.activeId) return;
+  const u = usage();
+  u.features[feature] = (u.features[feature] || 0) + 1;
+}
+function startUsageSession() {
+  usageDay().opens += 1;
+  usageTickAt = Date.now();
+  saveState();
+}
+// Adds the time since the last tick, but only if the tab was visible for it.
+function flushUsage() {
+  if (!accounts.activeId || usageTickAt === null) return;
+  const now = Date.now();
+  if (document.visibilityState === 'visible') {
+    const sec = Math.round((now - usageTickAt) / 1000);
+    if (sec > 0 && sec < 300) usageDay().sec += sec;   // a gap over 5 min is a sleep, not use
+  }
+  usageTickAt = now;
+}
+function totalUsageSeconds() {
+  return Object.values(usage().days).reduce((s, d) => s + (d.sec || 0), 0);
+}
+function activeDayCount() {
+  return Object.values(usage().days).filter(d => (d.sec || 0) > 0 || (d.opens || 0) > 0).length;
+}
+function fmtDuration(sec) {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+// Friendly names, so the report reads as English rather than as dotted keys.
+const FEATURE_LABELS = {
+  'study.mixed': 'Mixed practice', 'study.deck': 'Single topic', 'study.endless': 'Endless practice',
+  'study.card': 'Cards answered', 'study.goalMet': 'Daily goal met',
+  'tab.study': 'Study tab', 'tab.feed': 'Assignments tab', 'tab.upload': 'Upload tab',
+  'tab.work': 'Library tab', 'tab.calendar': 'Calendar tab',
+  'upload.file': 'Document uploaded', 'upload.manual': 'Manual entry',
+  'assignment.step': 'Assignment steps', 'export.sheet': 'Worksheet exported',
+  'data.export': 'Backup exported', 'data.import': 'Backup imported', 'settings.open': 'Settings opened',
+};
+function featureLabel(key) { return FEATURE_LABELS[key] || key; }
+
+/* ===================== SENDING USAGE SOMEWHERE YOU CAN READ IT ============
+   There is no backend, so nothing reaches you unless the person using the app
+   chooses to send it. This builds a small flat report and offers a few ways out
+   of the device. Flat on purpose: one field per number, so a Google Form drops
+   it into a spreadsheet as columns you can sort, rather than as a blob of JSON
+   in a single cell that you then have to unpick.
+
+   >>> TO COLLECT RESPONSES, FILL THIS IN: make a Google Form with one short-answer
+   question per field below, open it, View source, and search for "entry." to find
+   each question's id. Put the form's /formResponse URL in `action` and the ids in
+   `fields`. Until then the form option stays hidden and the other options  -
+   share, email, copy, download  -  all work with no setup at all. */
+const USAGE_FORM = {
+  action: '',        // e.g. 'https://docs.google.com/forms/d/e/1FAIpQL.../formResponse'
+  fields: {
+    username: '',    // e.g. 'entry.123456789'
+    days: '', minutes: '', cards: '', streak: '', sessions: '', topFeature: '', detail: '',
+  },
+};
+const usageFormReady = () => !!(USAGE_FORM.action && USAGE_FORM.fields.detail);
+
+function buildUsageReport() {
+  flushUsage();
+  const u = usage();
+  const feats = u.features || {};
+  const sessions = (feats['study.mixed'] || 0) + (feats['study.deck'] || 0) + (feats['study.endless'] || 0);
+  // The most-visited SECTION, not the most-incremented counter. Cards answered
+  // would win this every time simply because it ticks once per question, which
+  // says nothing about which part of the app is earning its place.
+  const top = Object.entries(feats)
+    .filter(([k]) => k.startsWith('tab.'))
+    .sort((a, b) => b[1] - a[1])[0];
+  return {
+    username: currentUser()?.username || 'unknown',
+    firstSeen: u.firstSeen || todayStr(),
+    lastSeen: todayStr(),
+    days: activeDayCount(),
+    minutes: Math.round(totalUsageSeconds() / 60),
+    cards: feats['study.card'] || 0,
+    streak: state.streakDays || 0,
+    bestStreak: state.bestStreak || 0,
+    sessions,
+    topFeature: top ? featureLabel(top[0]) : 'none yet',
+    exam: state.studyExam || 'not chosen',
+    dailyGoal: state.dailyGoal || 10,
+    features: feats,
+    perDay: u.days,
+    app: 'piecewise',
+  };
+}
+// The version a person reads before sending it. Nothing hidden in the payload.
+function usageReportText(r) {
+  const lines = [
+    `Piecewise usage  -  ${r.username}`,
+    `Days used: ${r.days}   Time: ${fmtDuration(r.minutes * 60)}`,
+    `Cards answered: ${r.cards}   Practice sets: ${r.sessions}`,
+    `Streak: ${r.streak} (best ${r.bestStreak})   Exam: ${r.exam}`,
+    `Most used section: ${r.topFeature}`,
+    '',
+    'Feature counts:',
+    ...Object.entries(r.features).sort((a, b) => b[1] - a[1]).map(([k, v]) => `  ${featureLabel(k)}: ${v}`),
+  ];
+  return lines.join('\n');
+}
+
+function openUsageSheet() {
+  const r = buildUsageReport();
+  const root = document.getElementById('overlay-root');
+  const rows = topFeatures(8);
+  const maxCount = rows.length ? rows[0][1] : 1;
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-end justify-center" data-action="close-overlay-generic">
+      <div class="bg-surface border-t border-line rounded-t-2xl w-full max-h-[88%] overflow-y-auto no-scrollbar p-5 space-y-4 pop" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-2.5">
+          <span style="color:rgb(var(--c-accent-800))">${icon('barChart','w-5 h-5')}</span>
+          <h3 class="text-sm font-bold text-ink font-display flex-1">Your usage</h3>
+          <button data-action="close-overlay-generic" class="p-1.5 rounded-lg bg-surface2 border border-line text-ink2">${icon('x','w-4 h-4')}</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="p-3 rounded-xl bg-bg border border-line">
+            <div class="text-lg font-display font-bold text-ink">${r.days}</div>
+            <div class="text-[9.5px] text-ink3 uppercase tracking-wide mt-0.5">Days</div></div>
+          <div class="p-3 rounded-xl bg-bg border border-line">
+            <div class="text-lg font-display font-bold text-ink">${fmtDuration(r.minutes * 60)}</div>
+            <div class="text-[9.5px] text-ink3 uppercase tracking-wide mt-0.5">Time</div></div>
+          <div class="p-3 rounded-xl bg-bg border border-line">
+            <div class="text-lg font-display font-bold text-ink">${r.cards}</div>
+            <div class="text-[9.5px] text-ink3 uppercase tracking-wide mt-0.5">Cards</div></div>
+        </div>
+
+        ${rows.length ? `
+          <div class="space-y-2">
+            <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">What you use most</h4>
+            ${rows.map(([k, v]) => `
+              <div class="flex items-center gap-2.5 text-[11.5px]">
+                <span class="flex-1 min-w-0 truncate text-ink2">${escapeHtml(featureLabel(k))}</span>
+                <div class="w-24 h-1.5 bg-surface2 rounded-full overflow-hidden shrink-0">
+                  <div class="h-full bg-accent-500" style="width:${Math.round((v / maxCount) * 100)}%"></div>
+                </div>
+                <span class="font-bold text-ink w-8 text-right shrink-0">${v}</span>
+              </div>`).join('')}
+          </div>` : `<p class="text-[11.5px] text-ink2 px-1">Nothing recorded yet. Answer a few cards and come back.</p>`}
+
+        <div class="space-y-2 pt-1">
+          <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Send it to the developer</h4>
+          <p class="text-[11px] text-ink2 px-1 leading-relaxed">Nothing leaves this device unless you tap one of these. No answers or uploads are included  -  only the counts above.</p>
+          ${usageFormReady() ? `
+            <button data-action="usage-send-form" class="w-full p-3.5 rounded-xl grad-btn flex items-center justify-center gap-2 text-xs">
+              ${icon('send','w-4 h-4')} Send usage data
+            </button>` : ''}
+          <div class="grid grid-cols-2 gap-2">
+            ${navigator.share ? `
+              <button data-action="usage-share" class="p-3 rounded-xl bg-bg border border-line flex items-center justify-center gap-2 text-[11.5px] font-bold text-ink">
+                ${icon('send','w-3.5 h-3.5')} Share</button>` : ''}
+            <button data-action="usage-copy" class="p-3 rounded-xl bg-bg border border-line flex items-center justify-center gap-2 text-[11.5px] font-bold text-ink">
+              ${icon('copy','w-3.5 h-3.5')} Copy</button>
+            <button data-action="usage-email" class="p-3 rounded-xl bg-bg border border-line flex items-center justify-center gap-2 text-[11.5px] font-bold text-ink">
+              ${icon('fileText','w-3.5 h-3.5')} Email</button>
+            <button data-action="usage-download" class="p-3 rounded-xl bg-bg border border-line flex items-center justify-center gap-2 text-[11.5px] font-bold text-ink">
+              ${icon('upload','w-3.5 h-3.5')} Save file</button>
+          </div>
+        </div>
+
+        <details class="pt-1">
+          <summary class="text-[11px] text-ink2 px-1 cursor-pointer">See exactly what would be sent</summary>
+          <pre class="mt-2 p-3 rounded-xl bg-bg border border-line text-[10px] text-ink2 overflow-x-auto whitespace-pre-wrap">${escapeHtml(usageReportText(r))}</pre>
+        </details>
+      </div>
+    </div>`;
+}
+
+async function sendUsageToForm() {
+  const r = buildUsageReport();
+  const body = new URLSearchParams();
+  const f = USAGE_FORM.fields;
+  const put = (id, val) => { if (id) body.append(id, String(val)); };
+  put(f.username, r.username); put(f.days, r.days); put(f.minutes, r.minutes);
+  put(f.cards, r.cards); put(f.streak, r.streak); put(f.sessions, r.sessions);
+  put(f.topFeature, r.topFeature); put(f.detail, JSON.stringify(r));
+  try {
+    // no-cors because Google Forms sends no CORS headers: the POST lands, but the
+    // response is opaque, so a success here means "sent", not "accepted".
+    await fetch(USAGE_FORM.action, { method: 'POST', mode: 'no-cors', body });
+    usage().lastSentAt = todayStr();
+    saveState();
+    document.getElementById('overlay-root').innerHTML = '';
+    toast('Sent  -  thank you');
+    burstConfetti();
+  } catch (e) {
+    toast('Could not send. Try Copy or Email instead.');
+  }
+}
+async function shareUsage() {
+  const r = buildUsageReport();
+  try {
+    await navigator.share({ title: 'Piecewise usage', text: usageReportText(r) });
+    usage().lastSentAt = todayStr(); saveState();
+  } catch (e) {}
+}
+function copyUsage() {
+  const text = usageReportText(buildUsageReport());
+  (navigator.clipboard?.writeText(text) || Promise.reject())
+    .then(() => { usage().lastSentAt = todayStr(); saveState(); toast('Copied  -  paste it anywhere'); })
+    .catch(() => toast('Could not copy on this browser'));
+}
+function emailUsage() {
+  const r = buildUsageReport();
+  const url = `mailto:?subject=${encodeURIComponent('Piecewise usage  -  ' + r.username)}&body=${encodeURIComponent(usageReportText(r))}`;
+  usage().lastSentAt = todayStr(); saveState();
+  window.location.href = url;
+}
+function downloadUsage() {
+  const r = buildUsageReport();
+  const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `piecewise-usage-${r.username}-${todayStr()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  usage().lastSentAt = todayStr(); saveState();
+  toast('Saved  -  send me the file');
+}
+
+/* Asks, once, after there is actually something worth sending  -  and then not
+   again for a fortnight whether they said yes or no. A prompt that reappears
+   every session is how testers learn to dismiss things without reading them. */
+function maybePromptUsageShare() {
+  const u = usage();
+  if (activeDayCount() < 3) return;
+  const recent = iso => iso && daysBetween(iso, todayStr()) < 14;
+  if (recent(u.lastSentAt) || recent(u.promptDismissedAt)) return;
+
+  const root = document.getElementById('overlay-root');
+  if (root.innerHTML) return;                 // never on top of something else
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-ink/25 z-50 flex items-center justify-center p-5">
+      <div class="bg-surface border border-line rounded-2xl p-5 max-w-xs w-full space-y-4 pop text-center">
+        <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+             style="background:rgb(var(--c-sky-100));color:rgb(var(--c-sky-700))">${icon('barChart','w-7 h-7')}</div>
+        <div class="space-y-1.5">
+          <h3 class="text-base font-display font-semibold text-ink tracking-tight">Help shape Piecewise</h3>
+          <p class="text-[11.5px] text-ink2 leading-relaxed">You have used this for ${activeDayCount()} days. Sending your usage counts tells me which parts are worth building on. No answers or uploads  -  just counts, and you can see them first.</p>
+        </div>
+        <div class="space-y-2">
+          <button data-action="usage-open-from-prompt" class="w-full py-2.5 rounded-lg grad-btn text-xs">Take a look</button>
+          <button data-action="usage-dismiss-prompt" class="w-full py-2 rounded-xl bg-surface2 border border-line text-ink2 text-xs font-bold">Not now</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ============================== AUTH SCREEN ============================== */
+let authMode = 'in';          // 'in' | 'up'
+let authBusy = false;
+
+function renderAuthGate() {
+  const root = document.getElementById('auth-root');
+  const up = authMode === 'up';
+  const known = accounts.users.length;
+  root.innerHTML = `
+    <div class="absolute inset-0 bg-bg z-[60] flex flex-col overflow-y-auto no-scrollbar">
+      <div class="flex-1 flex flex-col justify-center px-6 py-10 max-w-sm w-full mx-auto space-y-6">
+        <div class="text-center space-y-3">
+          ${mascotBadgeHTML('w-16 h-16')}
+          <div>
+            <h1 class="text-2xl font-display font-semibold text-ink tracking-tight">Piecewise</h1>
+            <p class="text-xs text-ink2 mt-1.5">${up ? 'Make an account to keep your progress.' : 'Welcome back.'}</p>
+          </div>
+        </div>
+
+        <form id="auth-form" class="space-y-3" autocomplete="on">
+          <div class="space-y-1.5">
+            <label for="auth-username" class="text-[11px] font-bold text-ink2 px-1">Username</label>
+            <input id="auth-username" name="username" type="text" autocapitalize="none" autocorrect="off" spellcheck="false"
+              autocomplete="${up ? 'username' : 'username'}" placeholder="${up ? 'Pick a username' : 'Your username'}"
+              class="w-full bg-surface border border-line rounded-xl px-3.5 py-3 text-sm text-ink focus:border-accent-500 transition">
+          </div>
+          <div class="space-y-1.5">
+            <label for="auth-password" class="text-[11px] font-bold text-ink2 px-1">Password</label>
+            <div class="relative">
+              <input id="auth-password" name="password" type="password"
+                autocomplete="${up ? 'new-password' : 'current-password'}" placeholder="${up ? 'At least 6 characters' : 'Your password'}"
+                class="w-full bg-surface border border-line rounded-xl px-3.5 py-3 pr-11 text-sm text-ink focus:border-accent-500 transition">
+              <button type="button" data-action="auth-toggle-pw" aria-label="Show password"
+                class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-ink3">${icon('eye','w-4 h-4')}</button>
+            </div>
+          </div>
+          <div id="auth-error" class="text-[11.5px] text-bad px-1 min-h-[16px]"></div>
+          <button type="submit" id="auth-submit" class="w-full py-3 rounded-xl grad-btn text-sm">
+            ${up ? 'Create account' : 'Sign in'}
+          </button>
+        </form>
+
+        <div class="text-center">
+          <button data-action="auth-switch" class="text-[11.5px] text-ink2">
+            ${up ? 'Already have an account? <span class="font-bold text-ink">Sign in</span>'
+                 : `New here? <span class="font-bold text-ink">Create an account</span>`}
+          </button>
+        </div>
+
+        ${!up && known === 0 ? `
+          <p class="text-[11px] text-ink3 text-center leading-relaxed">No accounts on this device yet  -  create one to get started.</p>` : ''}
+
+        <div class="pt-2 border-t border-line space-y-2">
+          <p class="text-[10.5px] text-ink3 leading-relaxed text-center">
+            Accounts are stored on this device only. There is no server, so your
+            password protects your progress from whoever else picks up this phone
+            &mdash; not from someone determined to read the browser's storage.
+          </p>
+        </div>
+      </div>
+    </div>`;
+
+  const form = document.getElementById('auth-form');
+  form.addEventListener('submit', e => { e.preventDefault(); submitAuth(); });
+  setTimeout(() => document.getElementById('auth-username')?.focus(), 50);
+}
+
+function authError(msg) {
+  const el = document.getElementById('auth-error');
+  if (el) el.textContent = msg || '';
+  if (msg) haptic([10, 40, 10]);
+}
+
+async function submitAuth() {
+  if (authBusy) return;
+  const name = document.getElementById('auth-username')?.value || '';
+  const pw = document.getElementById('auth-password')?.value || '';
+  const btn = document.getElementById('auth-submit');
+  authError('');
+
+  if (!name.trim()) return authError('Enter a username');
+  if (!pw) return authError('Enter a password');
+
+  authBusy = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'One moment...'; }
+  try {
+    if (authMode === 'up') {
+      const nameBad = usernameProblem(name);
+      if (nameBad) throw new Error(nameBad);
+      const pwBad = passwordProblem(pw);
+      if (pwBad) throw new Error(pwBad);
+      const { adopted } = await signUp(name, pw);
+      enterApp();
+      toast(adopted ? 'Account made  -  your existing progress is here' : `Welcome, ${name.trim()}`);
+    } else {
+      const user = await signIn(name, pw);
+      if (!user) throw new Error('Wrong username or password');
+      enterApp();
+      toast(`Welcome back, ${user.username}`);
+    }
+  } catch (err) {
+    authError(err.message || 'Something went wrong');
+  } finally {
+    authBusy = false;
+    const b = document.getElementById('auth-submit');
+    if (b) { b.disabled = false; b.textContent = authMode === 'up' ? 'Create account' : 'Sign in'; }
+  }
+}
+
+// Everything the app needs on the way in, in the order BOOT would have done it.
+function enterApp() {
+  document.getElementById('auth-root').innerHTML = '';
+  loadState();
+  refreshStreak();
+  applyTheme();
+  startUsageSession();
+  switchTab(state.ui.tab || 'study');
+  maybePromptUsageShare();
+}
+function topFeatures(n) {
+  return Object.entries(usage().features)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n || 8);
 }
 
 /* ============================== DAILY STREAK ============================== */
@@ -3221,6 +3775,10 @@ function findNextStepInAssignment(ass, afterProblemId) {
 
 /* ============================== NAV ============================== */
 function switchTab(tab) {
+  // Counted every time, including the tab you land on at launch. Only deliberate
+  // navigation calls this, and leaving the landing tab out would have made Study
+  // look less used than everything else purely because it is the default.
+  track(`tab.${tab}`);
   state.ui.tab = tab;
   document.querySelectorAll('.nav-btn').forEach(b => {
     const active = b.dataset.tab === tab;
@@ -3884,6 +4442,7 @@ function finalizeUpload() {
 
 function handleFileSelected(file) {
   if (!file) return;
+  track('upload.file');
   const titleGuess = file.name.replace(/\.[^.]+$/, '');
   const isImage = file.type.startsWith('image/');
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -4435,6 +4994,7 @@ function renderWorkPlayer() {
 
 /* ============================== COMPLETION LOGIC ============================== */
 function completeHomeworkStep(assId, probId, stepId, selectedIndex) {
+  track('assignment.step');
   const ass = getAssignment(assId), p = getProblem(ass, probId), s = getStep(p, stepId);
   s.completed = true; s.completedAt = todayStr(); if (selectedIndex !== undefined) s.selectedIndex = selectedIndex;
   markActivity(); saveState();
@@ -4537,6 +5097,7 @@ function completeFreeStudyCard(deckId, skillId, text) {
 
 // Fires once, the moment the day's goal is reached.
 function showGoalOverlay() {
+  track('study.goalMet');
   burstConfetti();
   haptic([12, 60, 12]);
   const n = state.streakDays || 1;
@@ -5025,6 +5586,9 @@ function renderDeckList(examKey) {
 /* A session is a queue of {deckId, cardId}, which is what lets a mixed run cross
    topics. A single-topic run is just the queue that happens to hold one deck. */
 function startSession(queue, meta) {
+  // One choke point for every way a session can begin, so the counts can't drift
+  // apart from the code as new entry points get added.
+  track(meta.endless ? 'study.endless' : meta.kind === 'deck' ? 'study.deck' : 'study.mixed');
   state.ui.studyQueue = queue;
   state.ui.studyMeta = meta;
   state.ui.studyCardIndex = 0;
@@ -5060,6 +5624,7 @@ function extendSession(by) {
 // numbers, and progress keys on the skill, so the queue alone can't tell a
 // repeat from a first attempt.
 function recordSessionResult(deckId, skillId, correct, graded) {
+  track('study.card');
   if (!state.ui.studyDeckId) return;
   if (!state.ui.studyResults) state.ui.studyResults = [];
   state.ui.studyResults.push({ deckId, skillId, correct: !!correct, graded: graded !== false });
@@ -5340,6 +5905,27 @@ function openSettingsSheet() {
         </div>
 
         <div class="space-y-2">
+          <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Account</h4>
+          <div class="p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                 style="background:rgb(var(--c-accent-100));color:rgb(var(--c-accent-800))">${icon('user','w-5 h-5')}</div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold text-ink truncate">${escapeHtml(currentUser()?.username || 'Signed out')}</div>
+              <div class="text-[10.5px] text-ink3">Since ${fmtDate(currentUser()?.createdAt || todayStr())}</div>
+            </div>
+          </div>
+          <button data-action="open-usage" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3 text-left">
+            ${icon('barChart','w-4 h-4 text-accent-500 shrink-0')}
+            <div class="min-w-0 flex-1"><div class="text-xs font-bold text-ink">Your usage</div><div class="text-[10.5px] text-ink3">${activeDayCount()} day${activeDayCount() === 1 ? '' : 's'} &middot; ${fmtDuration(totalUsageSeconds())} &middot; send it to the developer</div></div>
+            ${icon('chevronRight','w-4 h-4 text-ink3 shrink-0')}
+          </button>
+          <button data-action="sign-out" class="w-full p-3.5 rounded-xl bg-surface border border-line flex items-center gap-3 text-left">
+            ${icon('logOut','w-4 h-4 text-ink2 shrink-0')}
+            <div class="min-w-0"><div class="text-xs font-bold text-ink">Sign out</div><div class="text-[10.5px] text-ink3">Your progress stays saved on this device</div></div>
+          </button>
+        </div>
+
+        <div class="space-y-2">
           <h4 class="text-[10px] font-bold text-ink3 uppercase tracking-wider px-1">Daily goal</h4>
           <p class="text-[11px] text-ink2 px-1 leading-relaxed">Cards to review each day to keep your streak, across as many short sets as you like. Best so far: ${state.bestStreak || 0} day${(state.bestStreak || 0) === 1 ? '' : 's'}.</p>
           <div class="grid grid-cols-3 gap-2">
@@ -5416,6 +6002,7 @@ function openSettingsSheet() {
         </button>`}
 
         <div class="pt-2 text-center text-[10px] text-ink3">Piecewise &middot; runs entirely on this device</div>
+        <div class="pb-2"></div>
       </div>
     </div>`;
 }
@@ -5459,7 +6046,12 @@ function clearAllData() {
   state.lastActiveDate = null;
   state.ui.confirmClearData = false;
   state.ui.workPlayer = null; state.ui.workView = 'list'; state.ui.workAssignmentId = null;
-  try { localStorage.removeItem('piecewise_v2'); } catch (e) {}
+  // Clears THIS account's save, not the device: another account's progress is
+  // not this person's to wipe, and the account itself survives so they stay in.
+  state.usage = freshUsage();
+  try {
+    if (accounts.activeId) localStorage.removeItem(userStateKey(accounts.activeId));
+  } catch (e) {}
   document.getElementById('overlay-root').innerHTML = '';
   switchTab('feed');
   toast('All data cleared');
@@ -5757,7 +6349,24 @@ document.addEventListener('click', e => {
   else if (a === 'close-overlay-generic') { document.getElementById('overlay-root').innerHTML = ''; }
   // The streak card behind the overlay is now stale, so redraw on the way out.
   else if (a === 'close-streak-overlay') { document.getElementById('overlay-root').innerHTML = ''; render(); }
-  else if (a === 'export-data') exportAllData();
+  else if (a === 'open-usage') openUsageSheet();
+  else if (a === 'usage-open-from-prompt') openUsageSheet();
+  else if (a === 'usage-dismiss-prompt') {
+    usage().promptDismissedAt = todayStr(); saveState();
+    document.getElementById('overlay-root').innerHTML = '';
+  }
+  else if (a === 'usage-send-form') sendUsageToForm();
+  else if (a === 'usage-share') shareUsage();
+  else if (a === 'usage-copy') copyUsage();
+  else if (a === 'usage-email') emailUsage();
+  else if (a === 'usage-download') downloadUsage();
+  else if (a === 'sign-out') signOut();
+  else if (a === 'auth-switch') { authMode = authMode === 'up' ? 'in' : 'up'; renderAuthGate(); }
+  else if (a === 'auth-toggle-pw') {
+    const el = document.getElementById('auth-password');
+    if (el) el.type = el.type === 'password' ? 'text' : 'password';
+  }
+  else if (a === 'export-data') { track('data.export'); exportAllData(); }
   else if (a === 'trigger-import-data') document.getElementById('import-file-input')?.click();
   else if (a === 'ask-clear-data') { state.ui.confirmClearData = true; openSettingsSheet(); }
   else if (a === 'cancel-clear-data') { state.ui.confirmClearData = false; openSettingsSheet(); }
@@ -5808,10 +6417,26 @@ document.addEventListener('input', e => {
 });
 
 /* ============================== BOOT ============================== */
-loadState();
-refreshStreak();
-applyTheme();
-switchTab(state.ui.tab || 'study');
+loadAccounts();
+applyTheme();                      // before either branch, so the gate isn't a flash of white
+if (accounts.activeId && accounts.users.some(u => u.id === accounts.activeId)) {
+  // Staying signed in is the whole point of remembering people: the gate is for
+  // the first run and for whoever signs out, not a toll on every launch.
+  enterApp();
+} else {
+  accounts.activeId = null;
+  authMode = accounts.users.length ? 'in' : 'up';
+  renderAuthGate();
+}
+
+// Time only accrues while the tab is actually in front; see flushUsage.
+setInterval(() => { flushUsage(); }, USAGE_TICK_MS);
+document.addEventListener('visibilitychange', () => {
+  flushUsage();
+  if (document.visibilityState === 'visible') usageTickAt = Date.now();
+  else saveState();
+});
+window.addEventListener('pagehide', () => { flushUsage(); saveState(); });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
