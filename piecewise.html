@@ -2921,6 +2921,16 @@ Object.entries(MORE_TEMPLATES).forEach(([deckId, list]) => {
    would have quietly dropped them from the syllabus. Once a deck's gaps are
    covered here it is marked `generatedOnly` and its cards stop being served.
    ========================================================================== */
+/* Most of the remaining gaps are recall and reasoning questions rather than
+   arithmetic, so the variation comes from a pool of written items rather than
+   from re-rolled numbers. One tuple per item: question, answer, three wrong
+   answers, explanation. Answer order is shuffled per instance by materializeCard,
+   so a pool of twelve is twelve questions that never sit in the same shape. */
+const poolQ = (r, items) => {
+  const it = r.pick(items);
+  return { q: it[0], ...mc(it[1], it[2], it[3], it[4]), explain: it[5] };
+};
+
 const GAP_TEMPLATES = {
 
   'sat-algebra': [
@@ -3310,19 +3320,549 @@ const GAP_TEMPLATES = {
     } },
   ],
 
+  'gmat-quant': [
+    { id: 't-gmat-q-successive', skill: 'Successive percent changes', gen: r => {
+        const up = r.pick([20, 25, 40, 50]), down = r.pick([10, 20, 25]);
+        const cost = r.pick([40, 60, 80, 100, 200]);
+        const marked = cost * (1 + up / 100);
+        const final = marked * (1 - down / 100);
+        const pct = Math.round((final / cost - 1) * 1000) / 10;
+        return { q: `A store marks up an item costing ${money(cost)} by ${up}%, then discounts the marked price by ${down}%. The final price is what percent above cost?`,
+          ...mc(`${pct}%`, `${up - down}%`, `${up}%`, `${Math.round((up - down) * 1.5 * 10) / 10}%`),
+          explain: `Percent changes multiply, they do not add. ${money(cost)} &times; 1.${String(up).padStart(2,'0')} = ${money(marked)}, then &times; 0.${String(100 - down).padStart(2,'0')} = ${money(final)}. That is ${pct}% above cost, not ${up - down}%.` };
+    } },
+    { id: 't-gmat-q-avgremove', skill: 'Average after removing a value', gen: r => {
+        const n = r.int(4, 7), avg = r.pick([20, 30, 40, 50]), drop = r.int(1, 4);
+        const newAvg = avg - drop;
+        const removed = n * avg - (n - 1) * newAvg;
+        return { q: `The average of ${n} numbers is ${avg}. Removing one number drops the average to ${newAvg}. What was the number removed?`,
+          ...mc(String(removed), String(avg + drop), String(avg), String(n * drop)),
+          explain: `Total before: ${n} &times; ${avg} = ${n * avg}. Total after: ${n - 1} &times; ${newAvg} = ${(n - 1) * newAvg}. The removed value is the difference, ${removed}.` };
+    } },
+    { id: 't-gmat-q-ratioparts', skill: 'Splitting a total by ratio', gen: r => {
+        const a = r.int(2, 5), b = r.int(2, 6);
+        if (a === b) return null;
+        const unit = r.int(4, 9);
+        const total = (a + b) * unit;
+        return { q: `The ratio of boys to girls in a class is ${a}:${b}. If the class has ${total} students, how many girls are there?`,
+          ...mc(String(b * unit), String(a * unit), String(total / 2), String(b * (unit + 1))),
+          explain: `The ratio has ${a} + ${b} = ${a + b} parts, so each part is ${total} &divide; ${a + b} = ${unit} students. Girls take ${b} parts: ${b} &times; ${unit} = ${b * unit}.` };
+    } },
+    { id: 't-gmat-q-reversepercent', skill: 'Reversing a percent relationship', gen: r => {
+        const p = r.pick([20, 25, 50, 60, 100]);
+        const y = 100, x = y * (1 + p / 100);
+        const pct = Math.round((y / x) * 1000) / 10;
+        return { q: `If x is ${p}% more than y, then y is what percent of x?`,
+          ...mc(`${pct}%`, `${100 - p}%`, `${p}%`, `${Math.round((x / y) * 100)}%`),
+          explain: `Let y = 100, so x = ${x}. Then y/x = 100/${x} = ${pct}%. Going back down is not the same percentage as going up: a ${p}% rise needs roughly a ${Math.round((100 - pct) * 10) / 10}% fall to undo.` };
+    } },
+    { id: 't-gmat-q-simpleinterest', skill: 'Simple interest', gen: r => {
+        const p = r.pick([1000, 1500, 2000, 2500]), rate = r.pick([4, 5, 8, 10]), yrs = r.int(2, 5);
+        const interest = p * rate / 100 * yrs;
+        const compound = Math.round(p * Math.pow(1 + rate / 100, yrs) - p);
+        return { q: `${money(p)} is invested at ${rate}% simple annual interest. How much interest is earned after ${yrs} years?`,
+          ...mc(money(interest), money(compound), money(p * rate / 100), money(interest * 2)),
+          explain: `Simple interest is charged on the original amount only: ${money(p)} &times; ${rate}% &times; ${yrs} = ${money(interest)}. Compound interest would give ${money(compound)}, because it also earns on the interest.` };
+    } },
+    { id: 't-gmat-q-arrangements', skill: 'Counting arrangements', gen: r => {
+        const n = r.int(3, 6);
+        const fact = k => k <= 1 ? 1 : k * fact(k - 1);
+        return { q: `In how many different orders can ${n} distinct books be arranged on a shelf?`,
+          ...mc(String(fact(n)), String(n * n), String(n * (n - 1)), String(fact(n - 1))),
+          explain: `${n} choices for the first slot, ${n - 1} for the next, and so on: ${n}! = ${Array.from({length:n},(_,i)=>n-i).join(' &times; ')} = ${fact(n)}.` };
+    } },
+    { id: 't-gmat-q-relativespeed', skill: 'Objects moving toward each other', gen: r => {
+        const s1 = r.pick([40, 50, 60]), s2 = r.pick([50, 60, 70, 80]);
+        const hours = r.int(2, 4);
+        const dist = (s1 + s2) * hours;
+        return { q: `Two trains start ${dist} miles apart and travel toward each other at ${s1} mph and ${s2} mph. How long until they meet?`,
+          ...mc(`${hours} hours`, `${Math.round(dist / s1 * 10) / 10} hours`, `${hours * 2} hours`, `${Math.round(dist / (s2 - s1) * 10) / 10} hours`),
+          explain: `Closing toward each other, the speeds add: ${s1} + ${s2} = ${s1 + s2} mph. Time = ${dist} &divide; ${s1 + s2} = ${hours} hours.` };
+    } },
+    { id: 't-gmat-q-consecutive', skill: 'Consecutive integers', gen: r => {
+        const k = r.int(8, 40);
+        const sum = k + (k + 1);
+        // Distractors chosen so none can collapse onto another: the smaller of the
+        // pair, one step past the answer, and the sum less the smaller.
+        return { q: `The sum of two consecutive integers is ${sum}. What is the larger integer?`,
+          ...mc(String(k + 1), String(k), String(k + 2), String(2 * k)),
+          explain: `Call them n and n + 1. Then 2n + 1 = ${sum}, so n = ${k} and the larger is ${k + 1}.` };
+    } },
+    { id: 't-gmat-q-gcd', skill: 'Greatest common divisor', gen: r => {
+        const g = r.pick([6, 8, 9, 12]), a = g * r.int(2, 6), b = g * r.int(7, 11);
+        const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+        const real = gcd(a, b);
+        return { q: `What is the greatest common divisor of ${a} and ${b}?`,
+          ...mc(String(real), String(a * b / real), String(Math.min(a, b)), String(real * 2)),
+          explain: `Break both into prime factors and take what they share. ${a} and ${b} share ${real}, and nothing larger divides both.` };
+    } },
+    { id: 't-gmat-q-remainder', skill: 'Remainders', gen: r => {
+        const d = r.pick([5, 7, 9, 11]), rem = r.int(1, d - 1), q1 = r.int(3, 9);
+        const n = d * q1 + rem;
+        return { q: `When a number is divided by ${d}, the remainder is ${rem}. Which of these could be the number?`,
+          ...mc(String(n), String(n + 1), String(d * q1), String(n - rem + d)),
+          explain: `A number leaving remainder ${rem} on division by ${d} has the form ${d}k + ${rem}. With k = ${q1} that gives ${d}&times;${q1} + ${rem} = ${n}.` };
+    } },
+    { id: 't-gmat-q-sequence', skill: 'Arithmetic sequences', gen: r => {
+        const first = r.int(2, 9), diff = r.int(2, 7), n = r.int(5, 12);
+        const term = first + (n - 1) * diff;
+        return { q: `An arithmetic sequence starts at ${first} with a common difference of ${diff}. What is the ${n}th term?`,
+          ...mc(String(term), String(first + n * diff), String(first * n), String(term - diff)),
+          explain: `The nth term is a + (n &minus; 1)d = ${first} + (${n} &minus; 1)(${diff}) = ${first} + ${(n - 1) * diff} = ${term}. It is n &minus; 1 steps, not n.` };
+    } },
+  ],
+
+  'gmat-data': [
+    { id: 't-gmat-d-correlation', skill: 'Reading a correlation coefficient', gen: r => poolQ(r, [
+        ['A study reports a correlation coefficient of r = 0.85 between two variables. This indicates:',
+         'A strong positive linear relationship', 'That one variable causes the other',
+         'A weak relationship', 'No relationship at all',
+         'r measures the strength and direction of a LINEAR relationship, from &minus;1 to +1. 0.85 is strong and positive. It says nothing about cause.'],
+        ['Two variables have a correlation coefficient of r = &minus;0.9. This indicates:',
+         'A strong relationship in which one rises as the other falls', 'A weak relationship because r is negative',
+         'No relationship', 'An error, since r cannot be negative',
+         'The sign gives the direction and the size gives the strength. &minus;0.9 is nearly as strong as +0.9, just inverted.'],
+        ['A scatterplot shows no clear pattern between shoe size and test scores. The correlation is most likely:',
+         'Close to 0', 'Close to +1', 'Close to &minus;1', 'Impossible to estimate',
+         'No visible pattern means almost no linear relationship, so r sits near zero.'],
+      ]) },
+    { id: 't-gmat-d-shareoftotal', skill: 'Share of a total', gen: r => {
+        const total = r.pick([500000, 800000, 1000000, 2000000]);
+        const share = r.pick([15, 20, 25, 35, 40]);
+        const val = total * share / 100;
+        const fmt = v => '$' + v.toLocaleString('en-US');
+        return { q: `A chart shows one region taking ${share}% of total sales of ${fmt(total)}. What were that region's sales?`,
+          ...mc(fmt(val), fmt(total * share / 1000), fmt(total - val), fmt(val / 2)),
+          explain: `${share}% of ${fmt(total)} = 0.${String(share).padStart(2,'0')} &times; ${fmt(total)} = ${fmt(val)}.` };
+    } },
+    { id: 't-gmat-d-boxplot', skill: 'Reading a box plot', gen: r => poolQ(r, [
+        ['On a box plot the median line sits much closer to the bottom of the box than the top. This suggests:',
+         'The data is skewed toward higher values', 'The data is skewed toward lower values',
+         'The data is perfectly symmetric', 'The data has no outliers',
+         'The median sitting low means the upper half of the middle 50% is stretched out, so the longer tail is above: a right skew, toward higher values.'],
+        ['One data set has a standard deviation of 2 and another with the same mean has a standard deviation of 8. The second set is:',
+         'More spread out around the mean', 'Centred on a higher value',
+         'Larger in sample size', 'More likely to be symmetric',
+         'Standard deviation measures spread, not centre or size. The same mean with a larger deviation means the values sit further from it.'],
+        ['A box plot shows a very short box but long whiskers. This indicates:',
+         'The middle half is tightly grouped but extreme values spread widely', 'All values are tightly grouped',
+         'The data has no median', 'The mean must equal the median',
+         'The box covers the middle 50% (the interquartile range) and the whiskers reach the extremes, so a short box with long whiskers means a tight centre and far-flung tails.'],
+      ]) },
+    { id: 't-gmat-d-venn', skill: 'Overlapping sets', gen: r => {
+        const onlyA = r.int(15, 40), onlyB = r.int(10, 35), both = r.int(5, 20);
+        const a = onlyA + both, b = onlyB + both;
+        return { q: `In a survey, ${a} people like coffee, ${b} like tea, and ${both} like both. How many like coffee or tea or both?`,
+          ...mc(String(a + b - both), String(a + b), String(onlyA + onlyB), String(both)),
+          explain: `Adding ${a} + ${b} counts the ${both} who like both twice, so subtract the overlap once: ${a} + ${b} &minus; ${both} = ${a + b - both}.` };
+    } },
+    { id: 't-gmat-d-samplequality', skill: 'Judging a source', gen: r => poolQ(r, [
+        ['Source A surveys 50 people and reports an average age of 34. Source B surveys 5,000 and reports 41. Which is the better estimate?',
+         'Source B, because a much larger sample is less affected by chance', 'Source A, because a smaller survey is easier to control',
+         'Neither, because the numbers disagree', 'Source A, because 34 is closer to the midpoint',
+         'Larger samples reduce random sampling error. Disagreement between sources is not itself a reason to discard both; sample size is the relevant difference here.'],
+        ['A survey of a company\'s own employees finds 90% support the CEO. The main problem is:',
+         'The sample is not representative of the wider population', 'The sample is too large',
+         'Percentages cannot describe opinions', 'Ninety percent is too high to be real',
+         'Employees have an obvious stake and are not a random draw from any wider group, so the result cannot be generalised beyond them.'],
+        ['Two sources report different totals for the same quarter\'s sales. The best first step is to:',
+         'Check whether they define the measure the same way', 'Average the two figures',
+         'Use the larger figure', 'Discard both as unreliable',
+         'Differences usually come from definitions and scope, such as gross against net or different date ranges, before anyone has made an error.'],
+      ]) },
+    { id: 't-gmat-d-pointvspercent', skill: 'Percentage points against percent', gen: r => {
+        const from = r.pick([15, 18, 20, 25]), to = from - r.pick([2, 3, 5]);
+        const rel = Math.round((from - to) / from * 1000) / 10;
+        return { q: `A company's profit margin fell from ${from}% to ${to}%. This is a fall of:`,
+          ...mc(`${from - to} percentage points, or about ${rel}% of the old margin`,
+                `${from - to}%, and nothing else can be said`,
+                `${rel} percentage points`, `${from - to} percent of total revenue`),
+          explain: `A change between two percentages is measured in percentage points: ${from} &minus; ${to} = ${from - to}. As a relative change it is ${from - to} &divide; ${from} = ${rel}% of what it was. Mixing the two is the classic error.` };
+    } },
+  ],
+
+  'gmat-verbal': [
+    { id: 't-gmat-v-nameflaw', skill: 'Naming the reasoning flaw', gen: r => poolQ(r, [
+        ['"Sales rose after the ad campaign, so the campaign caused the rise." This argument:',
+         'Treats a sequence in time as proof of cause', 'Relies on an unrepresentative sample',
+         'Attacks the person rather than the claim', 'Assumes what it sets out to prove',
+         'One thing following another does not make it the cause. Something else may have changed at the same time, or the rise may have been under way already.'],
+        ['"All successful CEOs have MBAs, so an MBA will make you a successful CEO." This argument:',
+         'Confuses a necessary condition with a sufficient one', 'Uses a word in two different senses',
+         'Appeals to an irrelevant authority', 'Draws on too small a sample',
+         'Even if every successful CEO had one, that makes the MBA common among them, not enough on its own to produce the result.'],
+        ['"This policy is good because it benefits the economy, and what benefits the economy is good." This argument:',
+         'Assumes the conclusion it is trying to prove', 'Mistakes correlation for cause',
+         'Relies on a false choice between two options', 'Attacks the person rather than the claim',
+         'The premise restates the conclusion, so the argument goes in a circle and provides no independent support.'],
+        ['"Either we raise taxes or the school closes." This argument:',
+         'Presents only two options when others may exist', 'Generalises from one case',
+         'Confuses cause with effect', 'Uses an ambiguous term',
+         'A false dilemma rules out middle ground and alternatives without argument.'],
+        ['"Everyone who disagrees with this policy simply does not understand it." This argument:',
+         'Dismisses opponents instead of answering them', 'Relies on a sample that is too small',
+         'Mistakes a correlation for a cause', 'Assumes a condition is sufficient',
+         'It attacks the people rather than their reasons, so no objection ever has to be addressed on its merits.'],
+        ['An argument uses the word "free" to mean "without cost" in its premise and "without restriction" in its conclusion. This is:',
+         'Equivocation, shifting the meaning of a term mid-argument', 'A false dilemma',
+         'An appeal to authority', 'Circular reasoning',
+         'The argument only works if the word keeps one meaning throughout. Shifting it makes the link between premise and conclusion an illusion.'],
+        ['"A survey of 12 people in one office found most prefer remote work, so most workers nationally do." This argument:',
+         'Generalises from a sample too small and narrow to support it', 'Assumes the conclusion',
+         'Confuses necessary and sufficient conditions', 'Appeals to emotion',
+         'Twelve people in a single office cannot stand in for a national workforce, however the question was asked.'],
+        ['"If the plan is approved, costs will fall. Costs fell, so the plan was approved." This argument:',
+         'Reasons backwards from the result to the condition', 'Denies the antecedent',
+         'Relies on a false dilemma', 'Attacks the person rather than the claim',
+         'The rule says approval brings falling costs, not that only approval could. Costs may have fallen for another reason entirely.'],
+      ]) },
+    { id: 't-gmat-v-questiontype', skill: 'What the question is asking for', gen: r => poolQ(r, [
+        ['A "resolve the paradox" question asks you to find the choice that:',
+         'Explains how both puzzling facts can be true at once', 'Proves one of the facts false',
+         'Strengthens the main conclusion', 'Identifies the author\'s assumption',
+         'Nothing is being argued. Two facts sit oddly together and the right answer supplies the missing circumstance that lets both stand.'],
+        ['Which question would be most useful in evaluating an argument?',
+         'One whose answer would make the conclusion more or less likely', 'One that restates the conclusion',
+         'One about the author\'s credentials', 'One that introduces an unrelated topic',
+         'An evaluation question looks for the hinge: the thing you would most want to know because the answer would swing the argument either way.'],
+        ['Which of these would best strengthen "This drug reduces headaches"?',
+         'A controlled trial where the treated group had fewer headaches than a placebo group', 'A testimonial from one satisfied patient',
+         'The fact that the drug is widely prescribed', 'A statement that the manufacturer is reputable',
+         'A control group is what separates the drug\'s effect from everything else that might reduce headaches, including expectation.'],
+      ]) },
+  ],
+
+  'lsat-lr': [
+    { id: 't-lsat-lr-conditional', skill: 'Conditional logic', gen: r => poolQ(r, [
+        ['The contrapositive of "If it rains, the game is cancelled" is:',
+         'If the game is not cancelled, it did not rain', 'If the game is cancelled, it rained',
+         'If it does not rain, the game is not cancelled', 'If it rains, the game is not cancelled',
+         'The contrapositive reverses AND negates: not-Y therefore not-X. It is the only form guaranteed to be true whenever the original is.'],
+        ['"If the alarm sounds, evacuate. The alarm did not sound. Therefore do not evacuate." This reasoning:',
+         'Wrongly treats the condition as the only reason to act', 'Is valid, since the rule was followed',
+         'Confuses correlation with cause', 'Relies on a sample that is too small',
+         'This is denying the antecedent. The rule says the alarm triggers evacuation; it never said nothing else could.'],
+        ['"If you study, you will pass." Studying is therefore:',
+         'Sufficient for passing but not shown to be necessary', 'Necessary for passing but not sufficient',
+         'Both necessary and sufficient', 'Neither necessary nor sufficient',
+         'The arrow runs from studying to passing, so studying guarantees the pass. Nothing said you could not pass another way.'],
+        ['"You must submit the form to attend." Submitting the form is:',
+         'Necessary for attending but not sufficient', 'Sufficient for attending but not necessary',
+         'Both necessary and sufficient', 'Irrelevant to attending',
+         '"Must" marks a requirement: no form, no attendance. But meeting one requirement does not promise there are no others.'],
+        ['A rule "If X then Y" also logically requires:',
+         'That Y is true whenever X is', 'That X is true whenever Y is',
+         'That X and Y always occur together', 'That neither X nor Y can be false',
+         'The arrow runs one way only. Y can happen without X; the rule only forbids X without Y.'],
+        ['"Some cats are black. Some black things are heavy. Therefore some cats are heavy." This reasoning:',
+         'Chains two "some" statements that need not overlap', 'Is valid',
+         'Denies the antecedent', 'Assumes the conclusion',
+         'The black cats and the heavy black things may be entirely different black things. "Some" statements do not chain.'],
+        ['"All members of the board approved the merger, so the merger must be sound." This reasoning:',
+         'Treats agreement as proof of correctness', 'Confuses necessary and sufficient conditions',
+         'Reverses a conditional', 'Generalises from a small sample',
+         'Unanimity records what the board thinks, not whether they are right. The argument supplies no reason the judgement is sound.'],
+      ]) },
+    { id: 't-lsat-lr-questiontype', skill: 'Identifying the question type', gen: r => poolQ(r, [
+        ['A "sufficient assumption" question asks for a statement that:',
+         'Would, if added, make the conclusion follow', 'The argument needs in order to work at all',
+         'Weakens the argument', 'Restates the conclusion in other words',
+         'Sufficient means enough: added to the premises it forces the conclusion. A necessary assumption is the weaker requirement the argument cannot do without.'],
+        ['To test whether an assumption is truly necessary to an argument, you should:',
+         'Negate it and see whether the argument collapses', 'Add it and see whether the conclusion follows',
+         'Check whether it appears in the passage', 'See whether it is true in the real world',
+         'The negation test is the standard tool: if denying the statement destroys the argument, the argument depended on it.'],
+        ['Parallel reasoning questions ask you to find an argument that:',
+         'Has the same logical structure, whatever its subject', 'Is about the same topic',
+         'Reaches the same conclusion', 'Contains the same number of premises',
+         'Structure is what is being matched. Subject matter is deliberately varied to see whether you can see past it.'],
+        ['A "resolve the paradox" question requires an answer that:',
+         'Lets both apparently conflicting facts be true together', 'Shows one fact is mistaken',
+         'Identifies the argument\'s conclusion', 'Strengthens the author\'s reasoning',
+         'There is no argument to attack or defend. You are supplying the circumstance under which both facts sit comfortably.'],
+      ]) },
+  ],
+
+  'lsat-rc': [
+    { id: 't-lsat-rc-questiontype', skill: 'What each question type wants', gen: r => poolQ(r, [
+        ['A "primary purpose" question asks you to identify:',
+         'Why the author wrote the passage', 'The single most important fact stated',
+         'The author\'s personal background', 'The passage\'s most difficult term',
+         'Purpose is about the author\'s aim, usually a verb: to argue, to explain, to challenge. Main point is the claim itself; purpose is what the author is doing with it.'],
+        ['The difference between a "main point" and a "primary purpose" question is that:',
+         'Main point is what the passage claims; purpose is what the author is doing', 'They are the same question in different words',
+         'Main point is always in the first line', 'Purpose questions never have a correct answer in the passage',
+         'One asks what is said, the other why it is said. The right answers often differ in their first word: a noun against a verb.'],
+        ['A "function" question, such as why the author mentions a particular study, asks about:',
+         'The role that detail plays in the argument', 'Whether the detail is factually accurate',
+         'How long the detail is discussed', 'Who originally discovered it',
+         'Function questions ask what work the sentence does: supporting, qualifying, introducing a counterexample. Not whether it is true.'],
+        ['An "EXCEPT" question, such as "the passage suggests all of the following EXCEPT", means:',
+         'Four answers are supported by the passage and one is not', 'All five answers are false',
+         'You should pick the most strongly supported answer', 'The passage contains an error',
+         'The odd one out is the credited answer. Four will be findable in the passage; the fifth will not.'],
+        ['A question asking what the author "would most likely agree" with requires:',
+         'An inference consistent with the author\'s stated position', 'A direct quotation from the passage',
+         'Your own view of the subject', 'The opposite of the author\'s view',
+         'It goes one small step beyond the text, but only a step the author\'s own commitments clearly license.'],
+        ['When a passage reports "some critics believe X" without endorsing it, X is:',
+         'A view the author is reporting, not necessarily holding', 'The author\'s main claim',
+         'Certainly false', 'The passage\'s conclusion',
+         'Separating the author\'s voice from reported views is one of the most heavily tested skills in reading comprehension.'],
+      ]) },
+    { id: 't-lsat-rc-strategy', skill: 'Reading comprehension tactics', gen: r => poolQ(r, [
+        ['Answer choices containing extreme language such as "always" or "never" are:',
+         'Often wrong, because passages rarely support absolute claims', 'Usually right, because they are specific',
+         'Irrelevant to correctness', 'Only used in main point questions',
+         'Academic prose hedges. An answer stronger than anything the passage says usually overshoots, though an extreme answer is right when the passage really is that strong.'],
+        ['An answer choice that is true in the real world but goes beyond what the passage says is:',
+         'Wrong, because answers must be supported by the passage', 'Right, because it is true',
+         'Right if it matches the author\'s field', 'Only wrong in inference questions',
+         'The passage is the only evidence that counts. Outside knowledge is the most common way to talk yourself into a wrong answer.'],
+        ['When a question cites a specific line number, the best approach is to:',
+         'Read a little before and after it for context', 'Read only the cited line',
+         'Ignore the citation and use the main idea', 'Re-read the whole passage',
+         'The cited line rarely contains the answer on its own; the sentences around it supply the role it is playing.'],
+        ['Taking brief notes on each paragraph\'s role as you read mainly helps because:',
+         'It makes locating relevant text faster later', 'It improves your memory of every detail',
+         'It is required by the test', 'It slows you down enough to read carefully',
+         'The aim is a map, not a transcript. Knowing where things are beats remembering what they said.'],
+        ['When an author raises an objection and then answers it, that objection usually:',
+         'Sets up the author\'s own position by contrast', 'Represents the author\'s real view',
+         'Is the main point of the passage', 'Can safely be skipped',
+         'Authors raise objections to dispatch them. Mistaking the objection for the thesis flips the passage\'s meaning.'],
+      ]) },
+  ],
+
+  'lsat-writing': [
+    // Free response: self-reviewed, so no options. The value is the prompt
+    // rotating rather than three essay questions repeating forever.
+    { id: 't-lsat-w-prompt', skill: 'Argumentative writing practice', gen: r => {
+        const topic = r.pick([
+          'employers should be allowed to monitor employees\' work communications',
+          'public universities should be tuition-free, funded by general taxation',
+          'cities should restrict private cars in their centres',
+          'jury service should remain compulsory',
+          'social media platforms should be liable for content their users post',
+          'standardised tests should be required for university admission',
+          'remote work should be a legally protected right where the job allows it',
+          'museums should return artefacts to their countries of origin',
+        ]);
+        const task = r.pick([
+          ['Write a thesis sentence', `taking a clear side on whether ${topic}. One sentence, and it must be arguable rather than obvious.`],
+          ['Give two pieces of support', `for the position that ${topic}. Name the evidence or reasoning, not just the opinion.`],
+          ['Acknowledge the counterargument', `to the position that ${topic}, in one sentence, without giving up your own position.`],
+          ['Find the weakness in your own case', `for the position that ${topic}. What evidence would an opponent bring that you would find hardest to answer?`],
+          ['Write a closing sentence', `for an essay arguing that ${topic}. Reinforce the thesis without simply repeating it.`],
+        ]);
+        return { kind: 'free', q: `${task[0]} ${task[1]}`,
+          explain: `There is no single right answer here. A strong response takes a definite position, rests on something specific rather than a general sentiment, and shows it has understood the other side rather than caricatured it.` };
+    } },
+  ],
+
+  'mcat-bio': [
+    { id: 't-mcat-bio-structures', skill: 'Cell structures and their jobs', gen: r => poolQ(r, [
+        ['Which organelle produces most of the cell\'s ATP through oxidative phosphorylation?',
+         'Mitochondrion', 'Ribosome', 'Golgi apparatus', 'Lysosome',
+         'The electron transport chain sits in the inner mitochondrial membrane, where the bulk of ATP is made.'],
+        ['Which structure regulates what enters and leaves the cell?',
+         'The plasma membrane', 'The nucleus', 'The cytoskeleton', 'The nucleolus',
+         'Its selectively permeable lipid bilayer, with its embedded transport proteins, controls traffic in and out.'],
+        ['Peroxisomes are primarily responsible for:',
+         'Breaking down fatty acids and neutralising hydrogen peroxide', 'Synthesising proteins for export',
+         'Producing ATP by respiration', 'Packaging proteins for secretion',
+         'They handle oxidative reactions that would damage the cell elsewhere, including detoxifying the peroxide they generate.'],
+        ['The endosymbiotic theory proposes that mitochondria originated as:',
+         'Free-living bacteria engulfed by an ancestral cell', 'Folds of the nuclear envelope',
+         'Fragments of the Golgi apparatus', 'Viral particles that lost their coats',
+         'Their own circular DNA, double membrane and bacteria-like ribosomes are the evidence usually cited.'],
+        ['Programmed cell death that removes damaged or unneeded cells is called:',
+         'Apoptosis', 'Necrosis', 'Mitosis', 'Autophagy',
+         'Apoptosis is orderly and controlled, dismantling the cell without spilling its contents. Necrosis is uncontrolled death from injury.'],
+        ['A stem cell able to give rise to any cell type in the body is described as:',
+         'Pluripotent', 'Multipotent', 'Unipotent', 'Totipotent only after birth',
+         'Pluripotent cells can become any of the three germ layers. Totipotent goes further still, producing extra-embryonic tissue too.'],
+      ]) },
+    { id: 't-mcat-bio-molecular', skill: 'Replication, transcription and translation', gen: r => poolQ(r, [
+        ['Which enzyme unwinds the DNA double helix during replication?',
+         'Helicase', 'DNA polymerase', 'Ligase', 'Primase',
+         'Helicase breaks the hydrogen bonds between the strands. Polymerase then builds the new strand, ligase seals nicks, primase lays down primers.'],
+        ['In eukaryotic cells, transcription and translation occur respectively in the:',
+         'Nucleus and cytoplasm', 'Cytoplasm and nucleus', 'Nucleus and nucleolus', 'Mitochondrion and ribosome',
+         'The separation is the point: mRNA is made and processed in the nucleus, then exported for ribosomes to translate.'],
+        ['DNA replication occurs during which phase of the cell cycle?',
+         'S phase', 'G1 phase', 'G2 phase', 'M phase',
+         'S is for synthesis. G1 and G2 are growth and checkpoint phases either side of it, and M is division itself.'],
+        ['During which phase of mitosis do sister chromatids separate?',
+         'Anaphase', 'Prophase', 'Metaphase', 'Telophase',
+         'They line up in metaphase and are pulled apart in anaphase, which is the step the name describes.'],
+        ['The lac operon is repressed when:',
+         'Lactose is absent, so the repressor binds the operator', 'Lactose is present in high concentration',
+         'Glucose is absent', 'The promoter is deleted',
+         'Without lactose there is no inducer to lift the repressor, so it sits on the operator and transcription stops.'],
+        ['Crossing over during meiosis I mainly serves to:',
+         'Generate genetic variation among gametes', 'Repair damaged chromosomes',
+         'Double the chromosome number', 'Ensure identical daughter cells',
+         'Exchanging segments between homologous chromosomes produces combinations of alleles neither parent chromosome carried.'],
+      ]) },
+    { id: 't-mcat-bio-transport', skill: 'Moving things across membranes', gen: r => poolQ(r, [
+        ['Facilitated diffusion requires:',
+         'A transport protein, but no energy input', 'ATP hydrolysis',
+         'Movement against the concentration gradient', 'A change in membrane potential',
+         'It is still passive, running down the gradient, but the molecule needs a channel or carrier because it cannot cross the lipid interior alone.'],
+        ['The sodium-potassium pump moves ions against their gradients, which means it:',
+         'Requires ATP, making it active transport', 'Works by simple diffusion',
+         'Needs no protein', 'Only functions when the cell is dividing',
+         'Anything moving up a gradient needs energy. The pump spends one ATP to move three sodium out and two potassium in.'],
+        ['Placing a cell in a hypertonic solution causes the cell to:',
+         'Lose water and shrink', 'Gain water and swell',
+         'Stay exactly the same size', 'Burst immediately',
+         'Water moves toward the higher solute concentration, which is outside the cell, so the cell loses water.'],
+        ['Enzymes speed up reactions by:',
+         'Lowering the activation energy', 'Changing the equilibrium position',
+         'Making the reaction exothermic', 'Increasing the temperature of the solution',
+         'The enzyme stabilises the transition state, so more collisions succeed. It does not change where the equilibrium sits, only how fast it is reached.'],
+      ]) },
+  ],
+
+  'mcat-chem': [
+    { id: 't-mcat-chem-redox', skill: 'Redox and oxidation', gen: r => poolQ(r, [
+        ['In a redox reaction, the species that loses electrons is:',
+         'Oxidised, and acts as the reducing agent', 'Reduced, and acts as the oxidising agent',
+         'Oxidised, and acts as the oxidising agent', 'Neither oxidised nor reduced',
+         'Losing electrons is oxidation. By giving them away it reduces something else, which makes it the reducing agent, which is the part most often reversed.'],
+        ['Across a period from left to right, electronegativity generally:',
+         'Increases', 'Decreases', 'Stays constant', 'Rises then falls sharply',
+         'Nuclear charge grows while the shell stays the same, pulling bonding electrons harder.'],
+        ['A central atom with four bonding pairs and no lone pairs has which shape?',
+         'Tetrahedral', 'Square planar', 'Trigonal planar', 'Bent',
+         'Four electron domains spread as far apart as possible in three dimensions, giving bond angles near 109.5 degrees.'],
+      ]) },
+    { id: 't-mcat-chem-acidbase', skill: 'Acids, bases and buffers', gen: r => poolQ(r, [
+        ['What is the conjugate base of H&#8322;CO&#8323;?',
+         'HCO&#8323;&#8315;', 'CO&#8323;&#178;&#8315;', 'H&#8323;O&#8314;', 'H&#8322;O',
+         'A conjugate base is what remains after donating one proton, so H&#8322;CO&#8323; becomes HCO&#8323;&#8315;. Removing a second proton would give the carbonate ion.'],
+        ['pH is defined as:',
+         'The negative logarithm of the hydrogen ion concentration', 'The hydrogen ion concentration itself',
+         'The ratio of acid to base', 'The logarithm of the hydroxide concentration',
+         'pH = &minus;log[H&#8314;], so each whole unit is a tenfold change in concentration.'],
+        ['A buffer resists pH change because it contains:',
+         'A weak acid and its conjugate base in comparable amounts', 'A strong acid and a strong base',
+         'Only a strong acid', 'Pure water at neutral pH',
+         'The pair mops up added acid or base, neutralising either without large swings in pH.'],
+        ['A salt with a very small Ksp is best described as:',
+         'Only slightly soluble', 'Highly soluble', 'A strong acid', 'A good buffer',
+         'Ksp is the solubility product: the smaller it is, the less dissolves before the solution saturates.'],
+      ]) },
+    { id: 't-mcat-chem-kinetics', skill: 'Kinetics and equilibrium', gen: r => poolQ(r, [
+        ['For a first-order reaction, doubling the reactant concentration will:',
+         'Double the rate', 'Quadruple the rate', 'Leave the rate unchanged', 'Halve the rate',
+         'First order means rate is proportional to concentration to the first power, so twice the concentration is twice the rate. Second order would quadruple it.'],
+        ['A catalyst speeds up a reaction by:',
+         'Providing a pathway with lower activation energy', 'Shifting the equilibrium toward products',
+         'Raising the system temperature', 'Being consumed to release energy',
+         'It offers an easier route and emerges unchanged. The equilibrium position is untouched; only the speed of reaching it changes.'],
+        ['By Le Chatelier\'s principle, increasing the pressure on a gas-phase equilibrium shifts it:',
+         'Toward the side with fewer moles of gas', 'Toward the side with more moles of gas',
+         'Toward the products, always', 'Not at all',
+         'The system relieves the imposed pressure by reducing the number of gas particles.'],
+        ['For the reaction 2A + B &rarr; C, the equilibrium constant expression is:',
+         'K = [C] / ([A]&#178;[B])', 'K = ([A]&#178;[B]) / [C]', 'K = [C] / ([A][B])', 'K = [C][A]&#178;[B]',
+         'Products over reactants, each raised to its stoichiometric coefficient. The 2 in front of A becomes the exponent.'],
+        ['A reaction that releases heat to its surroundings is:',
+         'Exothermic, with a negative enthalpy change', 'Endothermic, with a positive enthalpy change',
+         'Always spontaneous regardless of entropy', 'At equilibrium by definition',
+         'Heat leaving the system makes the enthalpy change negative. Whether it is spontaneous also depends on entropy and temperature.'],
+      ]) },
+    { id: 't-mcat-chem-quantities', skill: 'Molarity, gases and half-life', gen: r => {
+        const kind = r.int(0, 2);
+        if (kind === 0) {
+          const mol = r.int(2, 6), vol = r.pick([0.5, 2, 4, 5]);
+          const m = mol / vol;
+          return { q: `What is the molarity of a solution made by dissolving ${mol} mol of solute in ${vol} L of solution?`,
+            ...mc(`${m} M`, `${mol * vol} M`, `${vol / mol} M`, `${mol} M`),
+            explain: `Molarity is moles per litre: ${mol} &divide; ${vol} = ${m} M.` };
+        }
+        if (kind === 1) {
+          const hl = r.pick([5, 10, 20, 30]), n = r.int(2, 4);
+          const frac = Math.pow(2, n);
+          return { q: `A radioactive isotope has a half-life of ${hl} years. What fraction remains after ${hl * n} years?`,
+            ...mc(`1/${frac}`, `1/${n * 2}`, `1/${n}`, `${n}/${frac}`),
+            explain: `${hl * n} years is ${n} half-lives, and each one halves what is left: (1/2)<sup>${n}</sup> = 1/${frac}.` };
+        }
+        const a = r.int(3, 6), b = r.int(2, 5);
+        const needA = 2, needB = 1;
+        const canA = Math.floor(a / needA), canB = Math.floor(b / needB);
+        const limiting = canA <= canB ? 'A' : 'B';
+        if (canA === canB) return null;
+        return { q: `A reaction needs 2 mol of A for every 1 mol of B. Starting with ${a} mol A and ${b} mol B, which is the limiting reagent?`,
+          ...mc(limiting, limiting === 'A' ? 'B' : 'A', 'Neither, they are balanced', 'It cannot be determined'),
+          explain: `A supports ${a} &divide; 2 = ${canA} batches; B supports ${b} &divide; 1 = ${canB}. The smaller number runs out first, so ${limiting} is limiting.` };
+    } },
+  ],
+
+  'mcat-cars': [
+    { id: 't-mcat-cars-questiontype', skill: 'CARS question types', gen: r => poolQ(r, [
+        ['A "main idea" CARS question is best answered by:',
+         'Capturing the whole passage, not one striking paragraph', 'Quoting the first sentence',
+         'Choosing the most technical answer', 'Picking the longest answer choice',
+         'Wrong answers in main idea questions are usually true but too narrow, covering a single paragraph rather than the arc of the passage.'],
+        ['A question stem beginning "the author implies that" requires:',
+         'A conclusion the passage supports without stating outright', 'A direct quotation',
+         'Your own opinion on the topic', 'A fact from outside the passage',
+         'Implication sits one step past the text, but the step must be one the passage clearly licenses.'],
+        ['An "application" question asks you to:',
+         'Take the passage\'s principle and apply it to a new situation', 'Find a sentence that matches the answer',
+         'Summarise the passage', 'Identify the author\'s tone',
+         'The new case will not appear in the passage. You are testing whether the underlying principle covers it.'],
+        ['An "EXCEPT" question in CARS means:',
+         'Four choices are supported and the odd one out is the answer', 'Every choice is false',
+         'The passage contains a contradiction', 'You should pick the strongest choice',
+         'Reading the stem carefully matters most here, because the instinct is to pick a supported answer.'],
+        ['A "strengthen or weaken" CARS question asks you to:',
+         'Judge how new information bears on the author\'s argument', 'Decide whether the passage is well written',
+         'Identify the main idea', 'Find the author\'s tone',
+         'The new information is not in the passage. You are asking whether it makes the author\'s case more or less believable.'],
+      ]) },
+    { id: 't-mcat-cars-reading', skill: 'Reading the author\'s voice', gen: r => poolQ(r, [
+        ['If an author makes a claim and then adds "however", the clause after it usually:',
+         'Carries the author\'s real position', 'Repeats the earlier claim',
+         'Is irrelevant background', 'Must be factually false',
+         'Contrast words mark the turn. What comes after "however", "yet" or "nonetheless" generally outranks what came before it.'],
+        ['If a passage\'s tone is described as "measured", the author is most likely:',
+         'Careful and qualified rather than forceful', 'Angry and dismissive',
+         'Entirely neutral with no view at all', 'Enthusiastic and persuasive',
+         'Measured means hedged and deliberate. It is not the same as having no opinion, which trips people up on tone questions.'],
+        ['When a CARS passage reports "some critics believe X" without comment, X is:',
+         'A view being reported, not necessarily the author\'s', 'The author\'s thesis',
+         'Definitely false', 'The passage\'s conclusion',
+         'Attribution matters. Treating a reported view as the author\'s own reverses the passage on any question about their position.'],
+        ['When an author uses an analogy, such as comparing an economy to an ecosystem, the analogy is:',
+         'An illustration of the argument, not proof of it', 'The strongest evidence offered',
+         'Always misleading', 'The passage\'s main point',
+         'Analogies clarify. A question asking what the analogy does is asking about its function, which is to make a claim vivid rather than to establish it.'],
+        ['A passage supporting its claim mainly with personal anecdote is:',
+         'Weakly supported, since anecdote generalises poorly', 'Strongly supported, since it is first-hand',
+         'Not making a claim at all', 'Necessarily dishonest',
+         'Evaluating evidence quality is a common CARS task. Anecdote is vivid but cannot show how typical the case is.'],
+        ['A rhetorical question posed by the author is usually:',
+         'A way of asserting a point, not a request for information', 'A sign the author is uncertain',
+         'The main idea of the passage', 'An error in academic writing',
+         'The expected answer is built in. Treating it as genuine uncertainty misreads the author\'s confidence.'],
+      ]) },
+  ],
+
 };
 
 Object.entries(GAP_TEMPLATES).forEach(([deckId, list]) => {
   QUESTION_TEMPLATES[deckId] = (QUESTION_TEMPLATES[deckId] || []).concat(list);
 });
 
-// Decks whose fixed cards are now fully covered by templates. Listed one by one
-// rather than flipped on globally, so a deck only stops serving its cards once
-// the skills behind them are actually being generated.
-const GENERATED_ONLY = new Set([
-  'sat-algebra', 'sat-vocab', 'sat-data',
-  'act-math', 'act-english', 'act-science',
-]);
+// Every deck now has templates covering the skills its fixed cards used to be
+// the only source of, so nothing in the app serves a stored question any more.
+// Each exam's bank is generated end to end, which is what "never runs out" was
+// always supposed to mean.
+const GENERATED_ONLY = new Set(STUDY_DECKS.map(d => d.id));
 STUDY_DECKS.forEach(d => {
   d.templates = QUESTION_TEMPLATES[d.id] || [];
   d.generatedOnly = GENERATED_ONLY.has(d.id);
