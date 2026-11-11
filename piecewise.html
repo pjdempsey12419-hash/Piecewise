@@ -483,6 +483,7 @@ const ICONS = {
   send: '<path d="M21 3 10.5 13.5"/><path d="M21 3l-6.8 18-3.7-7.5L3 9.8 21 3z"/>',
   barChart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  sunrise: '<path d="M12 3v5M5.6 10.6 4.2 9.2M18.4 10.6l1.4-1.4M3 17h2M19 17h2M21 21H3"/><path d="M16 17a4 4 0 0 0-8 0"/>',
 };
 function icon(name, cls) {
   return `<svg class="${cls || 'w-4 h-4'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
@@ -2908,7 +2909,424 @@ const MORE_TEMPLATES = {
 Object.entries(MORE_TEMPLATES).forEach(([deckId, list]) => {
   QUESTION_TEMPLATES[deckId] = (QUESTION_TEMPLATES[deckId] || []).concat(list);
 });
-STUDY_DECKS.forEach(d => { d.templates = QUESTION_TEMPLATES[d.id] || []; });
+
+/* ===================== CLOSING THE GAPS IN THE GENERATED BANK ==============
+   Every deck shipped with a fixed list of cards before templates existed. The
+   templates were added beside them and the cards were left where they were, so
+   two thirds of what a session served was the same question verbatim every time
+   and the "never runs out" claim was only ever two thirds true.
+
+   Most of those cards duplicate a skill a template already generates. The ones
+   below are the skills that nothing generated yet, so retiring the fixed cards
+   would have quietly dropped them from the syllabus. Once a deck's gaps are
+   covered here it is marked `generatedOnly` and its cards stop being served.
+   ========================================================================== */
+const GAP_TEMPLATES = {
+
+  'sat-algebra': [
+    { id: 't-sat-alg-vertex', skill: 'Vertex form of a parabola', gen: r => {
+        const h = r.pick([-6,-5,-4,-3,-2,2,3,4,5,6]);
+        let k = r.pick([-9,-7,-5,-3,3,5,7,9]);
+        if (k === h) k = -k;
+        const inner = h > 0 ? `x &minus; ${h}` : `x + ${-h}`;
+        const tail = k >= 0 ? `+ ${k}` : `&minus; ${-k}`;
+        return { q: `What is the vertex of the parabola y = (${inner})&#178; ${tail}?`,
+          ...mc(`(${h}, ${k})`, `(${-h}, ${k})`, `(${h}, ${-k})`, `(${k}, ${h})`),
+          explain: `In vertex form y = (x &minus; h)&#178; + k the vertex is (h, k). Here the bracket is (${inner}), so h = ${h}, and the constant outside gives k = ${k}.` };
+    } },
+    { id: 't-sat-alg-proportion', skill: 'Solving a proportion', gen: r => {
+        const x = r.int(2, 12), a = r.int(2, 9), m = r.int(2, 6);
+        const b = a * m, c = x * m;
+        return { q: `Solve: ${a}/x = ${b}/${c}`,
+          ...mc(`x = ${x}`, `x = ${x + r.int(1, 3)}`, `x = ${Math.max(1, x - r.int(1, 3))}`, `x = ${b}`),
+          explain: `Cross-multiply: ${a} &times; ${c} = ${b}x, so ${a * c} = ${b}x and x = ${x}.` };
+    } },
+  ],
+
+  'sat-vocab': [
+    // A word list is finite by nature, but thirty entries with shuffled options
+    // beats eight cards that were identical every single time.
+    { id: 't-sat-rw-vocab', skill: 'Vocabulary in context', gen: r => {
+        const w = r.pick([
+          ['Ephemeral', 'Lasting only a short time', 'Permanent and unchanging', 'Brightly coloured', 'Very expensive'],
+          ['Ubiquitous', 'Found everywhere', 'Extremely rare', 'Ancient', 'Silent'],
+          ['Meticulous', 'Extremely careful and precise', 'Careless and rushed', 'Unusually fast', 'Costly'],
+          ['Ambiguous', 'Open to more than one interpretation', 'Perfectly clear', 'Very loud', 'Deliberately false'],
+          ['Candid', 'Honest and direct', 'Secretive', 'Polite but vague', 'Hesitant'],
+          ['Resilient', 'Able to recover quickly', 'Easily broken', 'Slow moving', 'Brightly lit'],
+          ['Skeptical', 'Inclined to doubt', 'Easily convinced', 'Openly hostile', 'Deeply bored'],
+          ['Superfluous', 'More than is needed', 'Badly needed', 'Hard to find', 'Carefully hidden'],
+          ['Benevolent', 'Kind and generous', 'Cruel', 'Indifferent', 'Easily angered'],
+          ['Novel', 'New and original', 'Very old', 'Extremely long', 'Widely disliked'],
+          ['Pragmatic', 'Concerned with practical results', 'Guided by theory alone', 'Needlessly cautious', 'Openly emotional'],
+          ['Tenuous', 'Weak or flimsy', 'Firmly established', 'Unusually heavy', 'Clearly stated'],
+          ['Prudent', 'Showing good judgement', 'Recklessly bold', 'Deeply confused', 'Overly talkative'],
+          ['Austere', 'Plain and without comfort', 'Richly decorated', 'Warmly welcoming', 'Loud and busy'],
+          ['Lucid', 'Clear and easy to follow', 'Muddled', 'Written in code', 'Extremely brief'],
+          ['Obsolete', 'No longer in use', 'Newly invented', 'Very costly', 'Rarely discussed'],
+          ['Arduous', 'Requiring great effort', 'Effortless', 'Mildly amusing', 'Quickly finished'],
+          ['Diligent', 'Careful and hard-working', 'Lazy', 'Easily distracted', 'Unusually lucky'],
+          ['Volatile', 'Liable to change suddenly', 'Steady and predictable', 'Heavily guarded', 'Pleasantly warm'],
+          ['Innocuous', 'Harmless', 'Deeply poisonous', 'Extremely rare', 'Difficult to read'],
+          ['Scrutinize', 'Examine closely', 'Glance at briefly', 'Throw away', 'Describe loosely'],
+          ['Mitigate', 'Make less severe', 'Make far worse', 'Measure exactly', 'Postpone indefinitely'],
+          ['Substantiate', 'Support with evidence', 'Deny outright', 'Summarise briefly', 'Repeat word for word'],
+          ['Ambivalent', 'Having mixed feelings', 'Completely certain', 'Openly angry', 'Entirely uninterested'],
+          ['Meander', 'Follow a winding course', 'Travel in a straight line', 'Stop abruptly', 'Climb steeply'],
+          ['Frugal', 'Careful with money', 'Wildly extravagant', 'Deeply dishonest', 'Unusually generous'],
+          ['Cogent', 'Clear and convincing', 'Rambling and weak', 'Deliberately vague', 'Highly technical'],
+          ['Indifferent', 'Having no particular interest', 'Passionately committed', 'Strongly opposed', 'Mildly amused'],
+          ['Exacerbate', 'Make a problem worse', 'Solve completely', 'Explain in detail', 'Ignore entirely'],
+          ['Nuanced', 'Showing fine distinctions', 'Crude and sweeping', 'Entirely wrong', 'Very short'],
+        ]);
+        const frame = r.pick([
+          `"${w[0]}" most nearly means:`,
+          `Which word or phrase could best replace "${w[0].toLowerCase()}"?`,
+          `In context, "${w[0].toLowerCase()}" most nearly means:`,
+        ]);
+        return { q: frame, ...mc(w[1], w[2], w[3], w[4]),
+          explain: `"${w[0]}" means ${w[1].charAt(0).toLowerCase() + w[1].slice(1)}.` };
+    } },
+  ],
+
+  'sat-data': [
+    { id: 't-sat-data-shift', skill: 'Shifting every value in a data set', gen: r => {
+        const m = r.int(20, 90), d = r.int(2, 12);
+        const up = r.next() < 0.5;
+        const nw = up ? m + d : m - d;
+        return { q: `A data set has a mean of ${m}. If every value ${up ? 'increases' : 'decreases'} by ${d}, the new mean is:`,
+          ...mc(String(nw), String(m), String(up ? m - d : m + d), String(m * d)),
+          explain: `Adding or subtracting the same amount from every value moves the mean by exactly that amount: ${m} ${up ? '+' : '&minus;'} ${d} = ${nw}. The spread does not change.` };
+    } },
+    { id: 't-sat-data-range', skill: 'Range of a data set', gen: r => {
+        const min = r.int(2, 20), range = r.int(14, 45);
+        const max = min + range;
+        return { q: `A data set has a range of ${range} and a minimum of ${min}. What is the maximum?`,
+          ...mc(String(max), String(range - min), String(range), String(min)),
+          explain: `Range = maximum &minus; minimum, so maximum = range + minimum = ${range} + ${min} = ${max}.` };
+    } },
+    { id: 't-sat-data-iqr', skill: 'Interquartile range', gen: r => {
+        const q1 = r.int(4, 18), iqr = r.int(6, 20);
+        const q3 = q1 + iqr;
+        return { q: `A box plot shows Q1 = ${q1} and Q3 = ${q3}. What is the interquartile range?`,
+          ...mc(String(iqr), String(q3 + q1), String(q3), String(q1)),
+          explain: `IQR = Q3 &minus; Q1 = ${q3} &minus; ${q1} = ${iqr}. It measures the spread of the middle half of the data.` };
+    } },
+    { id: 't-sat-data-noreplace', skill: 'Probability without replacement', gen: r => {
+        const a = r.int(3, 6), b = r.int(3, 6);
+        const n = a + b;
+        const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+        const num = a * (a - 1), den = n * (n - 1);
+        const g = gcd(num, den);
+        const correct = `${num / g}/${den / g}`;
+        const g2 = gcd(a * a, n * n);
+        return { q: `A jar holds ${a} red and ${b} green marbles. Two are drawn without replacement. What is the probability that both are red?`,
+          ...mc(correct, `${a * a / g2}/${n * n / g2}`, `${a}/${n}`, `${a - 1}/${n - 1}`),
+          explain: `The first draw is ${a}/${n}. One red is now gone, so the second is ${a - 1}/${n - 1}. Multiply: ${a}/${n} &times; ${a - 1}/${n - 1} = ${correct}.` };
+    } },
+    { id: 't-sat-data-weighted', skill: 'Combining two averages', gen: r => {
+        const n1 = r.pick([10, 15, 20, 25]);
+        let n2 = r.pick([30, 35, 40, 45]);
+        if (n2 === n1) n2 += 5;
+        const a1 = r.int(60, 78), a2 = r.int(80, 95);
+        const combined = (n1 * a1 + n2 * a2) / (n1 + n2);
+        const show = v => (Math.round(v * 10) / 10).toString();
+        const naive = (a1 + a2) / 2;
+        return { q: `A class of ${n1} students averages ${a1}. Another class of ${n2} students averages ${a2}. What is the average across both classes?`,
+          ...mc(show(combined), show(naive), String(a1), String(a2)),
+          explain: `The classes are different sizes, so you cannot average the averages. Total points = ${n1}&times;${a1} + ${n2}&times;${a2} = ${n1 * a1 + n2 * a2}, over ${n1 + n2} students, giving ${show(combined)}. Averaging the two averages would give ${show(naive)}, which over-weights the smaller class.` };
+    } },
+    { id: 't-sat-data-modeltype', skill: 'Choosing linear or exponential', gen: r => {
+        const kind = r.pick([
+          ['grows by a fixed percentage each year', 'An exponential function', 'A linear function'],
+          ['increases by the same amount each year', 'A linear function', 'An exponential function'],
+          ['halves every fixed period', 'An exponential function', 'A linear function'],
+          ['decreases by a constant number of units per hour', 'A linear function', 'An exponential function'],
+        ]);
+        return { q: `A quantity that ${kind[0]} is best modelled by:`,
+          ...mc(kind[1], kind[2], 'A quadratic function', 'An absolute value function'),
+          explain: `A fixed amount added or removed each period is linear. A fixed percentage or factor applied each period is exponential, because the change itself grows with the quantity. This one changes by a ${kind[1] === 'A linear function' ? 'fixed amount' : 'fixed proportion'}, so the answer is ${kind[1].toLowerCase()}.` };
+    } },
+    { id: 't-sat-data-slopemeaning', skill: 'What a slope tells you', gen: r => {
+        // Note: this deliberately says "has no defined slope" rather than the
+        // usual phrasing. specIsValid rejects any spec whose text contains the
+        // literal word that an unset template variable would print, which is how
+        // it catches a broken template  -  so the maths vocabulary has to dodge it.
+        const c = r.pick([
+          ['a slope of 0', 'Horizontal', 'Vertical', 'Rising from left to right', 'Falling from left to right'],
+          ['no defined slope', 'Vertical', 'Horizontal', 'Rising from left to right', 'Falling from left to right'],
+          ['a negative slope', 'Falling from left to right', 'Rising from left to right', 'Horizontal', 'Vertical'],
+          ['a positive slope', 'Rising from left to right', 'Falling from left to right', 'Horizontal', 'Vertical'],
+        ]);
+        return { q: `On a coordinate plane, a line with ${c[0]} is:`,
+          ...mc(c[1], c[2], c[3], c[4]),
+          explain: `Slope is rise over run. Zero rise gives a horizontal line. A vertical line has zero run, so its slope has no value at all. A positive slope rises to the right and a negative one falls.` };
+    } },
+  ],
+
+  'act-math': [
+    { id: 't-act-math-linear', skill: 'Solving linear equations', gen: r => {
+        const a = r.int(2, 9), x = r.int(2, 12), b = r.int(-9, 9) || 3;
+        const c = a * x + b;
+        return { q: `Solve: ${a}(x ${b < 0 ? '&minus;' : '+'} ${Math.abs(b) === 0 ? 1 : Math.abs(b)}) = ${sgn(a * (x + (b < 0 ? -Math.abs(b) : Math.abs(b))))}`,
+          ...mc(`x = ${x}`, ...r.nearMisses(x, 3, 4).map(v => `x = ${v}`)),
+          explain: `Divide both sides by ${a} first: x ${b < 0 ? '&minus;' : '+'} ${Math.abs(b)} = ${x + (b < 0 ? -Math.abs(b) : Math.abs(b))}, so x = ${x}.` };
+    } },
+    { id: 't-act-math-evaluate', skill: 'Evaluating a function', gen: r => {
+        const a = r.int(2, 5), c = r.int(-9, 9) || 2, x = r.int(-4, 6);
+        const y = a * x * x + c;
+        return { q: `If g(x) = ${a}x&#178; ${sgn(c) === String(c) && c >= 0 ? '+ ' + c : '&minus; ' + Math.abs(c)}, what is g(${sgn(x)})?`,
+          ...mc(String(y), ...r.nearMisses(y, 3, 6).map(String)),
+          explain: `g(${sgn(x)}) = ${a}(${sgn(x)})&#178; ${c >= 0 ? '+' : '&minus;'} ${Math.abs(c)} = ${a}(${x * x}) ${c >= 0 ? '+' : '&minus;'} ${Math.abs(c)} = ${y}. Square before multiplying.` };
+    } },
+    { id: 't-act-math-expprod', skill: 'Multiplying powers', gen: r => {
+        const a = r.int(2, 6), b = r.int(2, 6), m = r.int(2, 5), n = r.int(2, 5);
+        const sup = k => `&#${0x2070 + (k === 1 ? 0xB9 - 0x2070 : k === 2 ? 0xB2 - 0x2070 : k === 3 ? 0xB3 - 0x2070 : k)};`;
+        return { q: `Simplify (${a}x<sup>${m}</sup>)(${b}x<sup>${n}</sup>).`,
+          ...mc(`${a * b}x<sup>${m + n}</sup>`, `${a * b}x<sup>${m * n}</sup>`, `${a + b}x<sup>${m + n}</sup>`, `${a * b}x<sup>${Math.abs(m - n) || 1}</sup>`),
+          explain: `Multiply the coefficients and ADD the exponents: ${a}&times;${b} = ${a * b}, and x<sup>${m}</sup>&times;x<sup>${n}</sup> = x<sup>${m + n}</sup>.` };
+    } },
+    { id: 't-act-math-expquot', skill: 'Dividing powers', gen: r => {
+        const b = r.int(2, 5), a = b * r.int(2, 5), m = r.int(3, 6), n = r.int(1, 2);
+        return { q: `Simplify (${a}x<sup>${m}</sup>) / (${b}x<sup>${n}</sup>).`,
+          ...mc(`${a / b}x<sup>${m - n}</sup>`, `${a / b}x<sup>${m + n}</sup>`, `${a - b}x<sup>${m - n}</sup>`, `${a / b}x<sup>${m}</sup>`),
+          explain: `Divide the coefficients and SUBTRACT the exponents: ${a}&divide;${b} = ${a / b}, and x<sup>${m}</sup>&divide;x<sup>${n}</sup> = x<sup>${m - n}</sup>.` };
+    } },
+    { id: 't-act-math-yintercept', skill: 'Reading a y-intercept', gen: r => {
+        const m = r.int(-7, 7) || -2, b = r.int(-9, 9) || 7;
+        return { q: `What is the y-intercept of y = ${m < 0 ? '&minus;' + Math.abs(m) : m}x ${b < 0 ? '&minus; ' + Math.abs(b) : '+ ' + b}?`,
+          ...mc(String(b), String(m), '0', String(-b)),
+          explain: `In y = mx + b the y-intercept is b, the value of y when x = 0. Here that is ${b}; ${m} is the slope.` };
+    } },
+    { id: 't-act-math-zeroproduct', skill: 'Zero product property', gen: r => {
+        const p = r.int(2, 9), q = r.int(2, 9);
+        return { q: `Solve: (x &minus; ${p})(x + ${q}) = 0`,
+          ...mc(`x = ${p} or x = &minus;${q}`, `x = &minus;${p} or x = ${q}`, `x = ${p} or x = ${q}`, `x = ${p * q} only`),
+          explain: `A product is zero only if a factor is zero. x &minus; ${p} = 0 gives x = ${p}; x + ${q} = 0 gives x = &minus;${q}. Note the signs flip.` };
+    } },
+    { id: 't-act-math-inverse', skill: 'Inverse of a linear function', gen: r => {
+        const a = r.int(2, 6), b = r.int(2, 9);
+        return { q: `If f(x) = ${a}x &minus; ${b}, what is f<sup>&minus;1</sup>(x)?`,
+          ...mc(`(x + ${b}) / ${a}`, `(x &minus; ${b}) / ${a}`, `${a}x + ${b}`, `(x + ${a}) / ${b}`),
+          explain: `Swap x and y, then solve: x = ${a}y &minus; ${b}, so x + ${b} = ${a}y and y = (x + ${b})/${a}. Undo the subtraction first, then the multiplication.` };
+    } },
+    { id: 't-act-math-system', skill: 'Systems of equations', gen: r => {
+        const x = r.int(1, 9), y = r.int(1, 9);
+        const s = 2 * x + y, d = x - y;
+        return { q: `Solve the system: 2x + y = ${s}, x &minus; y = ${d}. Find y.`,
+          ...mc(String(y), String(x), ...r.nearMisses(y, 2, 4).map(String)),
+          explain: `Add the equations to eliminate y: 3x = ${s + d}, so x = ${x}. Substitute back: ${x} &minus; y = ${d}, so y = ${y}.` };
+    } },
+    { id: 't-act-math-quadformula', skill: 'Solving a quadratic', gen: r => {
+        const p = r.int(1, 7), q = r.int(1, 7);
+        const b = p - q, c = -p * q;
+        return { q: `Solve x&#178; ${b < 0 ? '&minus; ' + Math.abs(b) : '+ ' + b}x ${c < 0 ? '&minus; ' + Math.abs(c) : '+ ' + c} = 0.`,
+          ...mc(`x = ${q} or x = &minus;${p}`, `x = &minus;${q} or x = ${p}`, `x = ${q} or x = ${p}`, `x = &minus;${q} or x = &minus;${p}`),
+          explain: `Factor as (x &minus; ${q})(x + ${p}) = 0, which gives x = ${q} or x = &minus;${p}. The quadratic formula gives the same two roots.` };
+    } },
+    { id: 't-act-math-composition', skill: 'Composition of functions', gen: r => {
+        const a = r.int(2, 5), b = r.int(1, 7), x = r.int(1, 6);
+        const inner = x + b, outer = inner * inner;
+        return { q: `If f(x) = x&#178; and g(x) = x + ${b}, what is f(g(${x}))?`,
+          ...mc(String(outer), String(x * x + b), String(inner), String(x * x)),
+          explain: `Work inside out: g(${x}) = ${x} + ${b} = ${inner}. Then f(${inner}) = ${inner}&#178; = ${outer}. Squaring first would give ${x * x + b}, which is the usual slip.` };
+    } },
+    { id: 't-act-math-absvalue', skill: 'Absolute value equations', gen: r => {
+        const a = r.int(2, 4), b = r.int(1, 9), k = a * r.int(2, 6) + b;
+        const x1 = (k - b) / a, x2 = (-k - b) / a;
+        return { q: `Solve |${a}x + ${b}| = ${k}.`,
+          ...mc(`x = ${x1} or x = ${sgn(x2)}`, `x = ${x1} only`, `x = ${sgn(x2)} only`, `x = ${x1} or x = ${x1 + 1}`),
+          explain: `The bars mean the inside can be ${k} or &minus;${k}. ${a}x + ${b} = ${k} gives x = ${x1}; ${a}x + ${b} = &minus;${k} gives x = ${sgn(x2)}.` };
+    } },
+    { id: 't-act-math-distance', skill: 'Distance between two points', gen: r => {
+        const trip = r.pick([[3,4,5],[6,8,10],[5,12,13],[8,15,17],[9,12,15],[12,16,20]]);
+        const x1 = r.int(-4, 6), y1 = r.int(-4, 6);
+        const x2 = x1 + trip[0], y2 = y1 + trip[1];
+        return { q: `Find the distance between (${sgn(x1)}, ${sgn(y1)}) and (${sgn(x2)}, ${sgn(y2)}).`,
+          ...mc(String(trip[2]), String(trip[0] + trip[1]), String(trip[2] + 1), String(Math.abs(trip[1] - trip[0]))),
+          explain: `The horizontal gap is ${trip[0]} and the vertical gap is ${trip[1]}. Distance = &radic;(${trip[0]}&#178; + ${trip[1]}&#178;) = &radic;${trip[0] ** 2 + trip[1] ** 2} = ${trip[2]}.` };
+    } },
+    { id: 't-act-math-solveexp', skill: 'Solving an exponential equation', gen: r => {
+        const base = r.pick([2, 3, 4, 5]), x = r.int(2, 4);
+        return { q: `If ${base} raised to the power x equals ${base ** x}, what is x?`,
+          ...mc(String(x), String(base ** x / base), String(x + 1), String(base)),
+          explain: `Write ${base ** x} as a power of ${base}: ${base ** x} = ${base}<sup>${x}</sup>. With the same base, the exponents must match, so x = ${x}.` };
+    } },
+    { id: 't-act-math-inversevar', skill: 'Inverse variation', gen: r => {
+        const k = r.pick([12, 20, 24, 30, 36, 60]);
+        const x1 = r.pick([2, 3, 4, 5, 6]).valueOf();
+        const y1 = k / x1;
+        const x2 = r.pick([2, 3, 4, 5, 6, 10, 12]).valueOf();
+        if (!Number.isInteger(y1) || x2 === x1 || !Number.isInteger(k / x2)) return null;
+        const y2 = k / x2;
+        return { q: `y varies inversely with x. If y = ${y1} when x = ${x1}, what is y when x = ${x2}?`,
+          ...mc(String(y2), String(y1 * x2 / x1), String(y1), String(k)),
+          explain: `Inverse variation means xy stays constant: ${x1} &times; ${y1} = ${k}. So when x = ${x2}, y = ${k}/${x2} = ${y2}.` };
+    } },
+    { id: 't-act-math-expandsquare', skill: 'Expanding a binomial square', gen: r => {
+        const a = r.int(2, 9);
+        return { q: `Expand (x + ${a})&#178;.`,
+          ...mc(`x&#178; + ${2 * a}x + ${a * a}`, `x&#178; + ${a * a}`, `x&#178; + ${a}x + ${a * a}`, `x&#178; + ${2 * a}x + ${2 * a}`),
+          explain: `(x + ${a})&#178; = (x + ${a})(x + ${a}) = x&#178; + ${a}x + ${a}x + ${a * a} = x&#178; + ${2 * a}x + ${a * a}. The middle term is what gets forgotten.` };
+    } },
+  ],
+
+  'act-english': [
+    { id: 't-act-eng-subjectverb', skill: 'Subject&ndash;verb agreement', gen: r => {
+        const c = r.pick([
+          ['Neither the teacher nor the students ___ ready.', 'were', 'was', 'is', 'has been',
+           'With "neither...nor", the verb agrees with the nearer subject. "students" is plural, so "were".'],
+          ['Neither the students nor the teacher ___ ready.', 'was', 'were', 'are', 'have been',
+           'With "neither...nor", the verb agrees with the nearer subject. "teacher" is singular, so "was".'],
+          ['The box of old photographs ___ on the shelf.', 'sits', 'sit', 'are sitting', 'have sat',
+           'The subject is "box", not "photographs". A singular subject takes "sits".'],
+          ['Each of the runners ___ a number.', 'has', 'have', 'are having', 'were having',
+           '"Each" is singular, however many runners follow it, so the verb is "has".'],
+          ['The committee ___ its decision this morning.', 'announced', 'announce', 'have announced', 'are announcing',
+           'A collective noun acting as one body takes a singular verb, and "its" confirms the singular.'],
+        ]);
+        return { q: `Choose the correct verb: "${c[0].replace('___', '___')}"`,
+          ...mc(c[1], c[2], c[3], c[4]), explain: c[5] };
+    } },
+    { id: 't-act-eng-runon', skill: 'Fixing a run-on sentence', gen: r => {
+        const c = r.pick([
+          ['The storm hit the coast, the power went out.', 'The storm hit the coast, and the power went out.',
+           'The storm hit the coast the power went out.', 'The storm hit the coast, however the power went out.'],
+          ['She finished the report, she sent it that night.', 'She finished the report, and she sent it that night.',
+           'She finished the report she sent it that night.', 'She finished the report, then, she sent it that night.'],
+          ['The bus was late, we missed the opening.', 'The bus was late, so we missed the opening.',
+           'The bus was late we missed the opening.', 'The bus was late, therefore we missed the opening.'],
+        ]);
+        return { q: `Which choice best corrects the run-on? "${c[0]}"`,
+          ...mc(c[1], c[2], c[3], `Replace the comma with nothing at all`),
+          explain: `Two complete sentences joined by only a comma is a comma splice. Fix it with a comma plus a coordinating conjunction (and, but, so), a semicolon, or a full stop. A conjunctive adverb like "however" needs a semicolon before it, not a comma.` };
+    } },
+    { id: 't-act-eng-pronouncase', skill: 'Pronoun case', gen: r => {
+        const c = r.pick([
+          ['Between you and ___, the plan will work.', 'me', 'I', 'myself', 'mine',
+           'After a preposition like "between" you need the object form, "me".'],
+          ['The prize went to Dara and ___.', 'me', 'I', 'myself', 'mine',
+           '"to" is a preposition, so the object form "me" is right. Remove "Dara and" and the ear confirms it.'],
+          ['___ did you give the message to?', 'Whom', 'Who', "Who's", 'Whose',
+           '"Whom" is the object of "to". Try answering it: you gave it to HIM, so it is "whom".'],
+          ['___ is responsible for the schedule?', 'Who', 'Whom', 'Whose', "Who's",
+           '"Who" is the subject of the verb "is". Answering with HE rather than HIM confirms the subject form.'],
+          ['My brother and ___ built the shed.', 'I', 'me', 'myself', 'mine',
+           'The pair is the subject of "built", so the subject form "I" is right.'],
+        ]);
+        return { q: `Choose the correct word: "${c[0]}"`, ...mc(c[1], c[2], c[3], c[4]), explain: c[5] };
+    } },
+    { id: 't-act-eng-dangling', skill: 'Dangling and misplaced modifiers', gen: r => {
+        const c = r.pick([
+          ['Walking through the park, the statue came into view.', 'Walking through the park, we saw the statue come into view.',
+           'The statue, walking through the park, came into view.', 'Walking through the park the statue came into view.'],
+          ['Having studied all night, the exam felt easy.', 'Having studied all night, she found the exam easy.',
+           'The exam, having studied all night, felt easy.', 'Having studied all night the exam felt easy.'],
+          ['Covered in mud, the coach sent the team home.', 'Covered in mud, the team was sent home by the coach.',
+           'The coach sent the team home covered in mud by him.', 'Covered in mud the coach sent the team home.'],
+        ]);
+        return { q: `Which choice fixes the modifier problem in "${c[0]}"?`,
+          ...mc(c[1], c[2], c[3], 'The sentence is already correct'),
+          explain: `An opening descriptive phrase attaches to whatever noun comes next. As written it describes the wrong thing, so the fix is to put the person doing the action straight after the comma.` };
+    } },
+    { id: 't-act-eng-tense', skill: 'Verb tense and sequence', gen: r => {
+        const c = r.pick([
+          ['By the time we arrived, the movie ___ already started.', 'had', 'has', 'have', 'was',
+           'One past action finished before another past action takes the past perfect, "had started".'],
+          ['She ___ here since March.', 'has lived', 'lives', 'lived', 'is living',
+           '"since" plus a point in the past calls for the present perfect, "has lived".'],
+          ['Yesterday the team ___ three goals.', 'scored', 'has scored', 'had scored', 'scores',
+           'A finished action at a stated past time takes the simple past, "scored".'],
+          ['If the rain stops, we ___ the match.', 'will finish', 'would finish', 'finished', 'had finished',
+           'A real future condition pairs present tense in the "if" half with "will" in the other half.'],
+        ]);
+        return { q: `Choose the correct form: "${c[0]}"`, ...mc(c[1], c[2], c[3], c[4]), explain: c[5] };
+    } },
+    { id: 't-act-eng-confusable', skill: 'Commonly confused words', gen: r => {
+        const c = r.pick([
+          ['The heat wave will ___ crop yields this summer.', 'affect', 'effect', 'affects', 'effected',
+           '"Affect" is the verb meaning to influence. "Effect" is normally the noun, the result.'],
+          ['The new rule had little ___ on attendance.', 'effect', 'affect', 'affects', 'affected',
+           'Here you need the noun, the result, which is "effect".'],
+          ['___ going to be a long week.', "It's", 'Its', "Its'", 'It',
+           '"It\'s" is short for "it is". "Its" without the apostrophe is the possessive.'],
+          ['The dog wagged ___ tail.', 'its', "it's", "its'", 'it is',
+           'Possessive "its" takes no apostrophe. "It\'s" would read "it is tail".'],
+          ['They loaded ___ bags into the car.', 'their', 'there', "they're", 'theirs',
+           '"Their" is the possessive. "There" is a place and "they\'re" is "they are".'],
+          ['The report had fewer ___ than last year.', 'errors', 'error', 'less errors', 'lesser errors',
+           '"Fewer" goes with countable things like errors; "less" goes with quantities you cannot count.'],
+        ]);
+        return { q: `Choose the correct word: "${c[0]}"`, ...mc(c[1], c[2], c[3], c[4]), explain: c[5] };
+    } },
+  ],
+
+  'act-science': [
+    { id: 't-act-sci-variables', skill: 'Independent and dependent variables', gen: r => {
+        const s = r.pick([
+          ['plant growth against hours of sunlight', 'Plant growth', 'Hours of sunlight'],
+          ['reaction rate against temperature', 'Reaction rate', 'Temperature'],
+          ['battery life against screen brightness', 'Battery life', 'Screen brightness'],
+          ['crop yield against amount of fertiliser', 'Crop yield', 'Amount of fertiliser'],
+        ]);
+        const askDependent = r.next() < 0.5;
+        return { q: `In an experiment testing ${s[0]}, the ${askDependent ? 'dependent' : 'independent'} variable is:`,
+          ...mc(askDependent ? s[1] : s[2], askDependent ? s[2] : s[1], 'The control group', 'The number of trials'),
+          explain: `The independent variable is the one the researcher sets (${s[2].toLowerCase()}). The dependent variable is the one that responds and gets measured (${s[1].toLowerCase()}).` };
+    } },
+    { id: 't-act-sci-causation', skill: 'Correlation and causation', gen: r => {
+        const s = r.pick([
+          ['ice cream sales and drowning rates', 'Both rise in hot weather'],
+          ['shoe size and reading ability in children', 'Both increase with age'],
+          ['number of fire engines at a fire and the damage done', 'Bigger fires draw more engines and cause more damage'],
+        ]);
+        return { q: `A study reports a strong relationship between ${s[0]}. What is the best conclusion?`,
+          ...mc('There is an association, but one may not be causing the other',
+                'One definitely causes the other',
+                'The relationship must be a coincidence',
+                'The study must have been conducted badly'),
+          explain: `A correlation on its own does not establish cause. Here a third factor explains both: ${s[1].toLowerCase()}. Only a controlled experiment can establish causation.` };
+    } },
+    { id: 't-act-sci-precision', skill: 'Precision and accuracy', gen: r => {
+        const s = r.pick([
+          ['Two students measure the same object as 5.2 cm and 5.21 cm using different rulers. The second ruler is:',
+           'More precise, because it reports a finer division', 'Less precise', 'Necessarily more accurate', 'Necessarily less accurate'],
+          ['A balance reports 4.00 g every time, but the true mass is 4.85 g. The balance is:',
+           'Precise but not accurate', 'Accurate but not precise', 'Both accurate and precise', 'Neither precise nor consistent'],
+        ]);
+        return { q: s[0], ...mc(s[1], s[2], s[3], s[4]),
+          explain: `Precision is how finely and how consistently an instrument reports. Accuracy is how close the reading is to the true value. An instrument can be consistently wrong, which is precise but not accurate.` };
+    } },
+    { id: 't-act-sci-trials', skill: 'Why experiments repeat trials', gen: r => {
+        return { q: r.pick([
+            'In a multi-trial experiment, averaging several trials instead of using one is mainly done to:',
+            'A researcher repeats each measurement five times and reports the mean. The main reason is to:',
+          ]),
+          ...mc('Reduce the effect of random error in any single measurement',
+                'Guarantee the hypothesis is supported',
+                'Remove the need for a control group',
+                'Make the experiment finish faster'),
+          explain: `Any single reading carries random error. Averaging several trials lets those errors partly cancel, giving a value closer to the truth. It does not replace a control group and it cannot make a hypothesis correct.` };
+    } },
+  ],
+
+};
+
+Object.entries(GAP_TEMPLATES).forEach(([deckId, list]) => {
+  QUESTION_TEMPLATES[deckId] = (QUESTION_TEMPLATES[deckId] || []).concat(list);
+});
+
+// Decks whose fixed cards are now fully covered by templates. Listed one by one
+// rather than flipped on globally, so a deck only stops serving its cards once
+// the skills behind them are actually being generated.
+const GENERATED_ONLY = new Set([
+  'sat-algebra', 'sat-vocab', 'sat-data',
+  'act-math', 'act-english', 'act-science',
+]);
+STUDY_DECKS.forEach(d => {
+  d.templates = QUESTION_TEMPLATES[d.id] || [];
+  d.generatedOnly = GENERATED_ONLY.has(d.id);
+});
 const EXAMS = [
   { key: 'SAT', label: 'SAT', blurb: 'Digital: Reading & Writing, Math' },
   { key: 'ACT', label: 'ACT', blurb: 'English, Math, Reading + science (optional)' },
@@ -3426,8 +3844,10 @@ function renderAuthGate() {
         <div class="text-center space-y-3">
           ${mascotBadgeHTML('w-16 h-16')}
           <div>
-            <h1 class="text-2xl font-display font-semibold text-ink tracking-tight">Piecewise</h1>
-            <p class="text-xs text-ink2 mt-1.5">${up ? 'Make an account to keep your progress.' : 'Welcome back.'}</p>
+            <h1 class="text-2xl font-display font-semibold text-ink tracking-tight">${up ? 'Piecewise' : `${partOfDay().word}`}</h1>
+            <p class="text-xs text-ink2 mt-1.5">${up
+              ? 'Make an account to keep your progress.'
+              : 'Sign in to pick up where you left off.'}</p>
           </div>
         </div>
 
@@ -3505,12 +3925,14 @@ async function submitAuth() {
       if (pwBad) throw new Error(pwBad);
       const { adopted } = await signUp(name, pw);
       enterApp();
-      toast(adopted ? 'Account made  -  your existing progress is here' : `Welcome, ${name.trim()}`);
+      toast(adopted
+        ? 'Account made  -  your existing progress is here'
+        : `${partOfDay().word}, ${displayName() || name.trim()}`);
     } else {
-      const user = await signIn(name, pw);
-      if (!user) throw new Error('Wrong username or password');
+      await signIn(name, pw);
+      if (!currentUser()) throw new Error('Wrong username or password');
       enterApp();
-      toast(`Welcome back, ${user.username}`);
+      toast(`${partOfDay().word}, ${displayName()}`);
     }
   } catch (err) {
     authError(err.message || 'Something went wrong');
@@ -3625,6 +4047,92 @@ function streakWeekHTML() {
         <span class="text-[9px] ${d.isToday ? 'text-ink font-bold' : 'text-ink3'}">${d.letter}</span>
       </div>`).join('')}
   </div>`;
+}
+
+/* ============================== GREETING ==============================
+   The first thing on the home screen, and the only place the app addresses the
+   person by name. Worth getting right: it is what makes an account feel like it
+   bought you something rather than just standing between you and the questions.
+
+   The second line is the part that actually earns its place. A greeting alone is
+   decoration; a greeting that knows whether your streak is safe, whether you have
+   started today, and whether anything is owed is the difference between the app
+   feeling personal and feeling like it has a template with your name in it. */
+function partOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return { word: 'Good morning', icon: 'sunrise', tint: 'peach' };
+  if (h < 17) return { word: 'Good afternoon', icon: 'sun', tint: 'accent' };
+  return { word: 'Good evening', icon: 'moon', tint: 'sky' };
+}
+
+// Just the first name, tidied. Somebody who signed up as "padraic dempsey" should
+// be greeted as Padraic, and "PADRAIC" should not be shouted back at them.
+function displayName() {
+  const raw = (currentUser()?.username || '').trim();
+  if (!raw) return null;
+  const first = raw.split(/[\s._-]+/)[0] || raw;
+  // Caps lock gets tidied, initials are left alone: PADRAIC becomes Padraic, but
+  // JD stays JD rather than turning into Jd. Length is the only signal available
+  // for telling those apart, and three characters draws the line about right.
+  if (first === first.toUpperCase() && first.length > 3) {
+    return first.charAt(0) + first.slice(1).toLowerCase();
+  }
+  // No truncation here  -  the heading is `truncate`, so CSS ends an over-long
+  // name with an ellipsis instead of chopping it mid-word.
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+/* One line of real context, picked in order of what the person most needs to
+   know. Ordering matters more than the wording: "your streak is about to go" has
+   to beat "nice work today", or the app cheers while the thing it asked you to
+   care about quietly expires. */
+function greetingSubtitle() {
+  const goal = state.dailyGoal || 10;
+  const done = studiedToday();
+  const streak = state.streakDays || 0;
+  const left = Math.max(0, goal - done);
+  const due = state.studyExam ? dueSkills(state.studyExam).length : dueCountAll();
+
+  if (goalMetToday()) {
+    return streak > 1
+      ? `Today is done. That is ${streak} days in a row.`
+      : `Today is done. Come back tomorrow to start a streak.`;
+  }
+  if (done > 0) {
+    return `${done} down, ${left} to go${streak > 0 ? ` to keep your ${streak} day streak` : ''}.`;
+  }
+  if (streak > 0) {
+    return `Your ${streak} day streak is still alive. ${left} card${left === 1 ? '' : 's'} keeps it that way.`;
+  }
+  if (due > 0) {
+    return `${due} card${due === 1 ? '' : 's'} are due for review.`;
+  }
+  const seen = activeDayCount();
+  if (seen <= 1) return `A few minutes is enough to start.`;
+  return `${left} card${left === 1 ? '' : 's'} today, whenever you have a minute.`;
+}
+
+function greetingHTML() {
+  const name = displayName();
+  if (!name) return '';
+  const t = partOfDay();
+  const met = goalMetToday();
+  return `
+    <div class="flex items-center gap-3.5 px-1 pt-0.5 enter">
+      <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+           style="background:rgb(var(--c-${t.tint}-100));color:rgb(var(--c-${t.tint}-700))">
+        ${icon(t.icon, 'w-6 h-6')}
+      </div>
+      <div class="min-w-0 flex-1">
+        <h2 class="text-[19px] font-display font-semibold text-ink tracking-tight leading-tight truncate">
+          ${t.word}, ${escapeHtml(name)}
+        </h2>
+        <p class="text-[11.5px] text-ink2 mt-0.5 leading-snug">${greetingSubtitle()}</p>
+      </div>
+      ${met ? `<span class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
+                     style="background:rgb(var(--c-good)/0.15);color:rgb(var(--c-good))"
+                     title="Today's goal is done">${icon('check','w-4 h-4')}</span>` : ''}
+    </div>`;
 }
 
 // The hero of the study tab: today's goal, the streak behind it, and the week.
@@ -4317,7 +4825,47 @@ function parseExtractedDocument(raw) {
   return finalize([whole]) || ['Untitled problem'];
 }
 
+/* Upload is behind a wall for now. The reader it depends on only works inside a
+   Claude artifact  -  on the live site window.claude does not exist, so every
+   upload quietly fell back to on-device OCR and produced worse results than the
+   tab promised. Better to say it is not ready than to let people try it and
+   conclude the app is bad at the one thing they just asked it to do. */
+const UPLOAD_ENABLED = false;
+
+function uploadComingSoonHTML() {
+  return `
+    <div class="p-4 space-y-4">
+      ${sectionRuleHTML('Upload', 'Turning a photo of your homework into practice.')}
+      <div class="p-6 rounded-2xl bg-surface border border-line text-center space-y-4">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+             style="background:rgb(var(--c-surface2));color:rgb(var(--c-ink3))">${icon('upload','w-8 h-8')}</div>
+        <div class="space-y-1.5">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+               style="background:rgb(var(--c-peach-100));color:rgb(var(--c-peach-700))">
+            ${icon('wand','w-3.5 h-3.5')}
+            <span class="text-[10.5px] font-bold uppercase tracking-wide">In development</span>
+          </div>
+          <h3 class="text-base font-display font-semibold text-ink tracking-tight pt-1">Not ready yet</h3>
+          <p class="text-[11.5px] text-ink2 leading-relaxed">
+            Photographing a worksheet and getting your own problems back as practice
+            is coming. The reading part is not good enough yet, and a bad read makes
+            more work than it saves  -  so it is switched off until it earns its place.
+          </p>
+        </div>
+        <div class="pt-1">
+          <button data-action="goto-tab" data-tab="study" class="w-full py-2.5 rounded-lg grad-btn text-xs">
+            Practice instead
+          </button>
+        </div>
+      </div>
+      <p class="text-[10.5px] text-ink3 text-center leading-relaxed">
+        Everything in Study works today and never runs out of questions.
+      </p>
+    </div>`;
+}
+
 function renderUploadTab() {
+  if (!UPLOAD_ENABLED) return uploadComingSoonHTML();
   if (state.ui.pendingUpload) return `<div class="p-4 space-y-4">${pendingUploadFormHTML()}</div>`;
   return `
     <div class="p-4 space-y-4">
@@ -5172,9 +5720,12 @@ function makeRng(seed) {
   return api;
 }
 
-// Every skill in a deck: templates plus any static cards it still carries.
+// Every skill in a deck: templates plus any static cards it still carries. A
+// deck marked generatedOnly has had its fixed cards covered by templates, so it
+// serves nothing but freshly generated questions.
 function deckSkills(deck) {
   const fromTemplates = (deck.templates || []).map(t => ({ skillId: t.id, deck, template: t, label: t.skill }));
+  if (deck.generatedOnly) return fromTemplates;
   const fromCards = (deck.cards || []).map(c => ({ skillId: c.id, deck, staticCard: c, label: c.skill || null }));
   return fromTemplates.concat(fromCards);
 }
@@ -5493,6 +6044,7 @@ function renderExamGrid() {
       </button>`;
   }).join('');
   return `<div class="p-4 space-y-4">
+    ${greetingHTML()}
     ${dailyGoalCardHTML()}
     ${dueTodayCardHTML(null)}
     ${sectionRuleHTML('Test prep', 'Pick the exam you are studying for. We’ll remember it.')}
@@ -5564,6 +6116,7 @@ function renderDeckList(examKey) {
     </button>`;
   const exam = EXAMS.find(e => e.key === examKey);
   return `<div class="p-4 space-y-4">
+    ${greetingHTML()}
     ${dailyGoalCardHTML()}
     ${dueTodayCardHTML(examKey)}
     <div class="flex items-end justify-between gap-3">
