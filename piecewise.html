@@ -1,4 +1,185 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body class="pw-booting">
+<script>
+  /* Resolve the saved theme before the splash paints, so a dark-mode launch
+     never flashes a cream sheet. applyTheme() re-does this once state loads;
+     the rule it mirrors is loadState's: only a deliberate choice counts, and
+     everything else is light. */
+  (function () {
+    try {
+      var acc = JSON.parse(localStorage.getItem('piecewise_accounts') || '{}');
+      var key = acc && acc.activeId ? 'piecewise_user_' + acc.activeId : 'piecewise_v2';
+      var saved = JSON.parse(localStorage.getItem(key) || '{}');
+      var mode = saved.themeChosen ? (saved.theme || 'light') : 'light';
+      if (mode === 'system') mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', mode);
+    } catch (e) {}
+  })();
+</script>
+<style>
+  /* ========================================================================
+     LAUNCH SPLASH  -  the mark winks, then hands the screen to the app.
+     This block sits above the font stylesheet and the CDN scripts on purpose:
+     everything it needs is inline, so it paints on the first frame of a cold
+     load instead of waiting on the network. That also means it carries its own
+     copy of the three theme values it uses  -  keep them in step with the
+     palette further down if those ever change.
+     The timeline is pure CSS, so the hand-over still happens even if the main
+     script never runs; the script below only adds tap-to-skip and cleanup.
+     ======================================================================== */
+  :root {
+    --pw-sheet: radial-gradient(120% 90% at 50% -10%, #F7F0E2 0%, #E6DAC6 70%);
+    --pw-ink:  #2F2F2F;
+    --pw-ink3: #62625F;
+    /* The emblem keeps one palette in both themes, the way an app icon does  -
+       only the sheet behind it follows light and dark. */
+    --pw-line:  #3E5571;   /* outline navy */
+    --pw-blue:  #A8C4E2;   /* the big slice  -  his face */
+    --pw-wedge: #CFE0F0;   /* the slice lifted out */
+    --pw-cream: #FAF4E9;   /* the cream slice */
+    --pw-hat:   #AFC8E8;   /* hat crown */
+    --pw-glass: #E6EDF5;   /* monocle lens */
+  }
+  :root[data-theme="dark"] {
+    --pw-sheet: radial-gradient(120% 90% at 50% -10%, #212123 0%, #141416 70%);
+    --pw-ink:  #F2F1EC;
+    --pw-ink3: #96948F;
+  }
+
+  .pw-splash {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px;
+    background: var(--pw-sheet);
+    padding: 24px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+    animation: pwSplashOut .42s cubic-bezier(.4,0,.2,1) 1.32s both;
+  }
+  .pw-splash svg { width: min(56vw, 212px); height: auto; display: block; overflow: visible; }
+
+  .pw-mark { animation: pwMarkIn .62s cubic-bezier(.22,.9,.3,1.18) both; }
+  /* The lifted slice drops home first  -  pieces coming together is the name. */
+  .pw-wedge { animation: pwWedgeIn .66s cubic-bezier(.22,.9,.3,1.12) .12s both; }
+  .pw-word  { text-align: center; animation: pwWordIn .5s cubic-bezier(.4,0,.2,1) .34s both; }
+  .pw-title { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--pw-ink); }
+  .pw-tag   { margin-top: 8px; font-size: 9.5px; font-weight: 500; text-transform: uppercase;
+              letter-spacing: 0.2em; color: var(--pw-ink3); }
+
+  /* The wink: the lens eye shuts and springs back open, and he tips his head
+     into it a touch so it reads as a wink rather than a blink. */
+  .pw-face     { animation: pwTip .52s cubic-bezier(.4,0,.2,1) .82s both; transform-origin: 75px 132px; }
+  .pw-eye-open { animation: pwEyeOpen .52s steps(1,end) .82s both; }
+  .pw-eye-shut { animation: pwEyeShut .52s steps(1,end) .82s both; }
+  .pw-brow     { animation: pwBrow .52s cubic-bezier(.4,0,.2,1) .82s both; }
+
+  @keyframes pwMarkIn  { from { opacity:0; transform: translateY(12px) scale(.78); } to { opacity:1; transform:none; } }
+  @keyframes pwWedgeIn { from { transform: translate(26px,-12px) rotate(9deg); } to { transform:none; } }
+  @keyframes pwWordIn  { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+  @keyframes pwTip     { 0%,100% { transform: rotate(0deg); } 40%,62% { transform: rotate(-2.6deg); } }
+  @keyframes pwEyeOpen { 0% { opacity:1; } 26% { opacity:0; } 66% { opacity:1; } }
+  @keyframes pwEyeShut { 0% { opacity:0; } 26% { opacity:1; } 66% { opacity:0; } }
+  @keyframes pwBrow    { 0%,100% { transform: translateY(0); } 26%,66% { transform: translateY(-3px); } }
+  @keyframes pwSplashOut { to { opacity:0; transform: scale(1.07); visibility: hidden; } }
+  @keyframes pwStageIn   { from { opacity:0; transform: scale(.986); } to { opacity:1; transform:none; } }
+
+  /* The app renders underneath while this plays and dissolves up as it lifts. */
+  body.pw-booting .stage { animation: pwStageIn .5s cubic-bezier(.4,0,.2,1) 1.36s both; }
+
+  /* Held on the last beat while a cold load finishes fetching its styles. */
+  .pw-splash.pw-hold { animation-play-state: paused; }
+  body.pw-hold .stage { animation-play-state: paused; }
+
+  /* What a tap, or the cleanup pass, leaves behind. */
+  .pw-splash.pw-gone { animation: none; opacity: 0; visibility: hidden; pointer-events: none; }
+  body.pw-skip .stage { animation: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pw-mark, .pw-wedge, .pw-word, .pw-face, .pw-brow { animation: none; }
+    .pw-eye-open { animation: pwEyeOpen .5s steps(1,end) .35s both; }
+    .pw-eye-shut { animation: pwEyeShut .5s steps(1,end) .35s both; }
+    .pw-splash { animation: pwSplashOut .3s linear .95s both; }
+    body.pw-booting .stage { animation: pwStageIn .3s linear .95s both; }
+  }
+</style>
+<div id="splash" class="pw-splash" role="img" aria-label="Piecewise">
+  <div class="pw-mark">
+    <svg viewBox="39 18 165 197" aria-hidden="true">
+      <g fill="none" stroke="var(--pw-line)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+        <!-- the pie: one slice lifted out, the other two still seated -->
+        <path class="pw-wedge" d="M128.6 133.5 L164.6 75.8 A68 68 0 0 1 195.6 145.3 Z" fill="var(--pw-wedge)"/>
+        <path d="M114 140 L181 151.8 A68 68 0 0 1 72.1 193.6 Z" fill="var(--pw-cream)"/>
+        <path d="M114 140 L72.1 193.6 A68 68 0 0 1 150 82.3 Z" fill="var(--pw-blue)"/>
+
+        <g class="pw-face">
+          <!-- top hat -->
+          <g transform="rotate(-7 112 70)">
+            <path d="M80 70 L80 28 L135 28 L135 70 Z" fill="var(--pw-hat)"/>
+            <path d="M80 28 L135 28 L135 39 L80 39 Z" fill="var(--pw-line)" stroke="none"/>
+            <ellipse cx="112" cy="70" rx="46" ry="7" fill="var(--pw-line)"/>
+          </g>
+          <!-- the far brow, over the eye the lifted slice took with it -->
+          <path class="pw-brow" d="M124.5 113.5 Q131 104.5 137.5 112.5" stroke-width="6"/>
+          <!-- monocle: lens, open eye, shut eye, chain -->
+          <circle cx="93" cy="118" r="16" fill="var(--pw-glass)"/>
+          <circle class="pw-eye-open" cx="93" cy="118" r="4.2" fill="var(--pw-line)" stroke="none"/>
+          <path class="pw-eye-shut" d="M86.5 116 Q93 123.5 99.5 116" stroke-width="5"/>
+          <path d="M87 135 C 83.5 153 81 172 78 198" stroke-width="5" stroke-dasharray="0.1 9"/>
+          <!-- handlebar -->
+          <path d="M111 155 C102 155 96 150.5 90.5 146.5 C85.5 143 80 145.5 81.5 152" stroke-width="11"/>
+          <path d="M111 155 C120 155 126 150.5 131.5 146.5 C136.5 143 142 145.5 140.5 152" stroke-width="11"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <div class="pw-word">
+    <div class="pw-title">Piecewise</div>
+    <div class="pw-tag">Small steps. Big progress.</div>
+  </div>
+</div>
+<script>
+  /* The splash above lifts on its own CSS timeline, so a script that never
+     runs can't strand anyone on it. This only adds the shortcuts: a tap skips
+     ahead, and the node is taken out of the tree once it's done. */
+  (function () {
+    var splash = document.getElementById('splash');
+    if (!splash) return;
+    var body = document.body, done = false, holding = false;
+
+    function finish() {
+      if (done) return;
+      done = true;
+      splash.classList.add('pw-gone');
+      body.classList.add('pw-skip');
+      body.classList.remove('pw-booting');
+      body.classList.remove('pw-hold');
+      setTimeout(function () { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 60);
+    }
+    function release() {
+      if (!holding) return;
+      holding = false;
+      splash.classList.remove('pw-hold');
+      body.classList.remove('pw-hold');
+      setTimeout(finish, 900);              // once the fade has played out
+    }
+    // The CSS lifts the splash at a fixed moment. On a first, uncached launch the
+    // Tailwind and font requests may not be back yet, and lifting on time would
+    // hand over to a frame of unstyled app  -  so hold the last beat until the
+    // page is actually ready, and never for longer than a few seconds.
+    setTimeout(function () {
+      if (done || document.readyState === 'complete') return;
+      holding = true;
+      splash.classList.add('pw-hold');
+      body.classList.add('pw-hold');
+      window.addEventListener('load', release);
+      setTimeout(release, 4000);
+    }, 1300);
+
+    splash.addEventListener('pointerdown', finish);
+    // The animation's own end is the normal path; the timer is the backstop for
+    // browsers that drop animationend on a backgrounded tab.
+    splash.addEventListener('animationend', function (e) { if (e.animationName === 'pwSplashOut') finish(); });
+    setTimeout(function () { if (!holding) finish(); }, 2600);
+  })();
+</script>
 <title>Piecewise</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -374,18 +555,21 @@
       <div class="px-5 pb-3 bg-bg flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-lg bg-surface2 flex items-center justify-center shrink-0" style="border:1px solid rgb(var(--c-linesoft))">
-            <svg viewBox="0 0 64 64" class="w-7 h-7" aria-hidden="true" fill="none" stroke="rgb(var(--c-ink))" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="rgb(var(--c-accent-500))" stroke="rgb(var(--c-accent-500))"/>
-              <circle cx="32" cy="36" r="18"/>
-              <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
-              <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="rgb(var(--c-ink))"/>
-              <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="rgb(var(--c-ink))"/>
-              <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
-              <path d="M30 38.5h3.5"/>
-              <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
-              <circle cx="39" cy="37.5" r="4" stroke-width="1.8"/>
-              <path d="M43.8 41.5 Q48 47 44.5 52" stroke-width="1.4"/>
-              <path d="M27 46 Q29.5 43.3 32 46 Q34.5 43.3 37 46" stroke-width="1.8"/>
+            <svg viewBox="39 18 165 197" class="w-7 h-7" aria-hidden="true" fill="none" stroke="var(--pw-line)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M128.6 133.5 L164.6 75.8 A68 68 0 0 1 195.6 145.3 Z" fill="var(--pw-wedge)"/>
+              <path d="M114 140 L181 151.8 A68 68 0 0 1 72.1 193.6 Z" fill="var(--pw-cream)"/>
+              <path d="M114 140 L72.1 193.6 A68 68 0 0 1 150 82.3 Z" fill="var(--pw-blue)"/>
+              <g transform="rotate(-7 112 70)">
+                <path d="M80 70 L80 28 L135 28 L135 70 Z" fill="var(--pw-hat)"/>
+                <path d="M80 28 L135 28 L135 39 L80 39 Z" fill="var(--pw-line)" stroke="none"/>
+                <ellipse cx="112" cy="70" rx="46" ry="7" fill="var(--pw-line)"/>
+              </g>
+              <path d="M124.5 113.5 Q131 104.5 137.5 112.5" stroke-width="6"/>
+              <circle cx="93" cy="118" r="16" fill="var(--pw-glass)"/>
+              <circle cx="93" cy="118" r="4.2" fill="var(--pw-line)" stroke="none"/>
+              <path d="M87 135 C 83.5 153 81 172 78 198" stroke-width="5" stroke-dasharray="0.1 9"/>
+              <path d="M111 155 C102 155 96 150.5 90.5 146.5 C85.5 143 80 145.5 81.5 152" stroke-width="11"/>
+              <path d="M111 155 C120 155 126 150.5 131.5 146.5 C136.5 143 142 145.5 140.5 152" stroke-width="11"/>
             </svg>
           </div>
           <div class="leading-none">
@@ -514,25 +698,30 @@ function subjectChipHTML(subject, size) {
   return `<div class="${dim} subject-chip rounded-lg flex items-center justify-center shrink-0" style="background:${tint};color:${ink}">${icon(subjectIcon(subject), iconCls)}</div>`;
 }
 
-// The Piecewise mascot: a pie-chart face in a top hat, glasses and monocle.
+// The Piecewise mascot: a pie chart with one slice lifted out, wearing a top
+// hat and a monocle. Same artwork as the launch splash, which carries its own
+// copy inline so it can paint before any script runs.
 // Reused at header size and blown up for empty/summary states.
 function mascotMarkHTML(cls) {
-  return `<svg viewBox="0 0 64 64" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="rgb(var(--c-ink))" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M32 36 L32 18 A18 18 0 0 1 49.7 32.9 Z" fill="rgb(var(--c-accent-500))" stroke="rgb(var(--c-accent-500))"/>
-    <circle cx="32" cy="36" r="18"/>
-    <path d="M32 36 L14.3 32.9 M32 36 L32 18 M32 36 L49.7 32.9"/>
-    <path d="M17 23 L15 7 L30 5 L32 20 Z" fill="rgb(var(--c-ink))"/>
-    <ellipse cx="24.5" cy="22.5" rx="11" ry="3" fill="rgb(var(--c-ink))"/>
-    <circle cx="26" cy="38.5" r="4" stroke-width="1.8"/>
-    <path d="M30 38.5h3.5"/>
-    <circle cx="39" cy="37.5" r="5.4" stroke-width="1.6"/>
-    <circle cx="39" cy="37.5" r="4" stroke-width="1.8"/>
-    <path d="M43.8 41.5 Q48 47 44.5 52" stroke-width="1.4"/>
-    <path d="M27 46 Q29.5 43.3 32 46 Q34.5 43.3 37 46" stroke-width="1.8"/>
+  return `<svg viewBox="39 18 165 197" class="${cls || 'w-7 h-7'}" aria-hidden="true" fill="none" stroke="var(--pw-line)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128.6 133.5 L164.6 75.8 A68 68 0 0 1 195.6 145.3 Z" fill="var(--pw-wedge)"/>
+    <path d="M114 140 L181 151.8 A68 68 0 0 1 72.1 193.6 Z" fill="var(--pw-cream)"/>
+    <path d="M114 140 L72.1 193.6 A68 68 0 0 1 150 82.3 Z" fill="var(--pw-blue)"/>
+    <g transform="rotate(-7 112 70)">
+      <path d="M80 70 L80 28 L135 28 L135 70 Z" fill="var(--pw-hat)"/>
+      <path d="M80 28 L135 28 L135 39 L80 39 Z" fill="var(--pw-line)" stroke="none"/>
+      <ellipse cx="112" cy="70" rx="46" ry="7" fill="var(--pw-line)"/>
+    </g>
+    <path d="M124.5 113.5 Q131 104.5 137.5 112.5" stroke-width="6"/>
+    <circle cx="93" cy="118" r="16" fill="var(--pw-glass)"/>
+    <circle cx="93" cy="118" r="4.2" fill="var(--pw-line)" stroke="none"/>
+    <path d="M87 135 C 83.5 153 81 172 78 198" stroke-width="5" stroke-dasharray="0.1 9"/>
+    <path d="M111 155 C102 155 96 150.5 90.5 146.5 C85.5 143 80 145.5 81.5 152" stroke-width="11"/>
+    <path d="M111 155 C120 155 126 150.5 131.5 146.5 C136.5 143 142 145.5 140.5 152" stroke-width="11"/>
   </svg>`;
 }
-function mascotBadgeHTML(dim) {
-  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid rgb(var(--c-linesoft))">${mascotMarkHTML('w-9 h-9')}</div>`;
+function mascotBadgeHTML(dim, markCls) {
+  return `<div class="${dim || 'w-14 h-14'} rounded-full bg-surface2 flex items-center justify-center mx-auto" style="border:1px solid rgb(var(--c-linesoft))">${mascotMarkHTML(markCls || 'w-10 h-10')}</div>`;
 }
 // Pocket-watch tick marks for the progress ring, drawn as short radial lines.
 function ringTicksHTML(cx, cy, rOuter, rInner, count) {
@@ -4382,7 +4571,7 @@ function renderAuthGate() {
     <div class="absolute inset-0 bg-bg z-[60] flex flex-col overflow-y-auto no-scrollbar">
       <div class="flex-1 flex flex-col justify-center px-6 py-10 max-w-sm w-full mx-auto space-y-6">
         <div class="text-center space-y-3">
-          ${mascotBadgeHTML('w-16 h-16')}
+          ${mascotBadgeHTML('w-16 h-16', 'w-12 h-12')}
           <div>
             <h1 class="text-2xl font-display font-semibold text-ink tracking-tight">${up ? 'Piecewise' : `${partOfDay().word}`}</h1>
             <p class="text-xs text-ink2 mt-1.5">${up
